@@ -1,0 +1,83 @@
+@import './base.css';
+
+/* =================================================================
+   SCROLLBAR CUSTOMIZATION
+   ================================================================= */
+
+:root {
+  --os-size: 8px;
+  --os-padding: 0px;
+  --os-handle-bg: var(--p-surface-200);
+  --os-handle-bg-hover: var(--p-surface-300);
+  --os-handle-bg-active: var(--p-surface-400);
+  --os-track-bg: transparent;
+}
+
+html.dark-mode {
+  --os-handle-bg: var(--p-surface-600);
+  --os-handle-bg-hover: var(--p-surface-500);
+  --os-handle-bg-active: var(--p-surface-400);
+}
+
+/* =================================================================
+   APPLICATION LAYOUT
+   ================================================================= */
+
+#app {
+  padding: 0;
+  font-weight: normal;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* =================================================================
+   LINKS & INTERACTIVE ELEMENTS
+   ================================================================= */
+
+a,
+.green {
+  text-decoration: none;
+  color: rgb(73, 87, 111);
+  transition: 0.4s;
+  padding: 3px;
+}
+
+@media (hover: hover) {
+  a:not(.p-menuitem-link):hover {
+    background-color: hsla(216, 65%, 74%, 0.2);
+  }
+}
+
+/* =================================================================
+   PRIMEVUE COMPONENT OVERRIDES
+   ================================================================= */
+
+.p-button-secondary:focus-visible {
+  outline: none !important;
+}
+
+.p-button-secondary:hover {
+  border: none !important;
+}
+
+.p-menu-item-content:active {
+  background: transparent;
+}
+
+.p-menu-item.p-focus .p-menu-item-content {
+  background: transparent !important;
+  color: var(--p-menu-item-color) !important;
+}
+
+.p-menu-item.p-focus .p-menu-item-icon {
+  background: transparent !important;
+  color: var(--p-menu-item-color) !important;
+}
+
+.router-link-active .p-menu-item-icon {
+  color: var(--p-menu-item-color) !important;
+}
+
+.router-link-active:hover .p-menu-item-icon {
+  color: inherit !important;
+}

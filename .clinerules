@@ -1,0 +1,162 @@
+# Context
+
+This project is the **desktop and web application** `Better Context`. It combines:
+
+- A TypeScript-based MCP (Model Context Protocol) server with SSE (Server-Sent Events) transport
+- A Vue.js web interface
+- A Tauri-based desktop application
+
+The application enables AI-powered guidelines analysis and workflow management, launched via the `Better Context` command from any directory. It provides contextual information (Git details, guidelines) and manages repository-specific configurations.
+
+# Structure
+
+## File Structure
+
+The source code is organized as follows:
+
+- `bin/`
+  - `btrx.js`: Executable script for the `Better Context` command
+- `src/`
+  - `app/`: Vue.js frontend application
+    - `components/`: Reusable Vue components (DarkModeToggle, GuidelinesContextsManager, etc.)
+    - `composables/`: Vue composables for shared logic
+    - `views/`: Page components (Dashboard, Guidelines, Workflows)
+    - `router/`: Vue Router configuration
+    - `helpers/`: Utility functions
+    - `assets/`: Styles and static assets
+  - `db/`: Database logic with PGlite and Drizzle
+    - `migrations/`: Database migration files
+    - `schema.ts`: Drizzle schema definitions
+  - `mcp/`: MCP server implementation
+    - `server.ts`: MCP server configuration
+    - `tools/`: MCP tools definitions
+    - `toolHandlers/`: Tool implementation logic
+      - `guidelines/`: Guidelines analysis tools
+  - `prompts/`: System prompts for AI interactions
+    - `guidelines/`: Guidelines-specific prompts
+      - `contexts/`: Context-specific analysis prompts
+  - `routes/`: API endpoints with hierarchical organization
+    - `guidelines/`: Guidelines management routes (contexts, guidelines, presets)
+    - `mcp/`: MCP-related routes (tools, client status)
+    - `repositories/`: Repository routes (git info, repositories)
+    - `system/`: System routes (health, info)
+  - `services/`: Business logic services
+  - `sse/`: Server-Sent Events handling
+- `src-tauri/`: Desktop application (Rust)
+  - `src/`: Rust application code
+  - `capabilities/`: Tauri capabilities configuration
+  - Configuration for icons, builds, and platform-specific settings
+
+## MCP Tools
+
+### Guidelines Analysis Tools
+
+- **`start_guidelines_analysis_flow`**
+  - Initiates guidelines analysis for repository contexts
+  - Manages the analysis workflow state
+- **`get_guidelines_analysis_prompt_for_context`**
+  - Generates context-specific analysis prompts
+  - Handles custom context parameters
+- **`save_guidelines`**
+  - Persists generated guidelines
+  - Associates guidelines with specific contexts
+
+Tool responses follow a standard schema:
+\`\`\`typescript
+{
+content: [{
+type: "text" | "json",
+text: string
+}]
+}
+\`\`\`
+
+# Features
+
+## Guidelines System
+
+- Context-based analysis
+- Preset management
+- Repository-specific configurations
+- Real-time updates via SSE
+
+## Desktop Integration
+
+- Cross-platform support via Tauri
+- Native system integration
+- Local file system access
+- Custom URL scheme handling
+
+# Resources
+
+## Frontend
+
+- Vue.js with TypeScript
+- Vue Router for navigation
+- Custom composables for shared logic
+- When possible use computed instead of watch
+- Dark mode support
+
+## Backend
+
+- Express with SSE transport
+- PGlite with Drizzle ORM
+- Tauri for desktop features
+- MCP SDK integration
+
+## API Endpoints
+
+- `/api/guidelines`: Guidelines management
+- `/api/guidelines-contexts`: Context configuration
+- `/api/guidelines-presets`: Preset management
+- `/api/repositories`: Repository information
+- `/api/git-info`: Git repository details
+- `/api/mcp-client-status`: Client state management
+- `/api/mcp-tools`: MCP tools list
+- `/api/cwd`: Current working directory information
+- `/healthz`: Health monitoring
+
+# Development Guidelines
+
+## General
+
+- Install packages via npm, avoid manual package.json edits
+- Keep files under 200 lines
+- Follow TypeScript/ESLint/Prettier conventions
+- Use .js extension for TypeScript imports
+- When you need to move a file, don't recreate it, use a command to move it
+
+## Vue Components
+
+- Order: `<script>`, `<template>`, `<style>`
+- Use composables for shared logic
+- Implement responsive design patterns
+- Don't need to import defineProps when you need it
+
+## Desktop App
+
+- Follow Tauri security best practices
+- Handle platform-specific differences
+- Implement proper error boundaries
+- Use appropriate capability permissions
+
+## Testing
+
+- Write tests with Vitest
+- Place test files alongside implementation
+- Test both success and error cases
+- Run full suite with `npm test`
+
+## Comments
+
+- Never explain what code does
+- Only comment to explain why when necessary
+- Keep comments exceptional and meaningful
+
+## SSE Implementation
+
+- Manage connections/disconnections properly
+- Clean up resources
+- Validate SSE data
+- Handle connection errors
+- Implement proper backoff strategies

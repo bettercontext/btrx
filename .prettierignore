@@ -1,0 +1,9 @@
+node_modules
+build
+dist
+coverage
+*.lock
+templates
+.bookignore
+src/db/migrations
+src-tauri
