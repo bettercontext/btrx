@@ -5,6 +5,7 @@ import { viteBundler } from '@vuepress/bundler-vite'
 import { defaultTheme } from '@vuepress/theme-default'
 
 export default defineUserConfig({
+  base: '/',
   lang: 'en-US',
   title: 'Better Context',
   description: 'Structured code context for smarter LLMs',
