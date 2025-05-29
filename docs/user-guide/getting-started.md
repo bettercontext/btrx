@@ -1,12 +1,11 @@
 # Getting Started
 
-Better Context is an AI-powered tool that helps you maintain consistent coding guidelines and provides contextual information about your projects to AI assistants.
+Better Context is a developer tool that maintains consistent coding guidelines and provides contextual project information to AI assistants. Simply run one command from any project directory to start an MCP server that gives AI tools structured access to your repository while keeping everything local on your machine.
 
 ## What Better Context Does
 
 - **Analyzes your codebase** to generate context-specific coding guidelines
-- **Connects with AI tools** like Claude to provide better, more consistent suggestions
-- **Maintains project context** including Git information and repository structure
+- **Connects with AI tools** like Cline or Cursor via MCP
 - **Works locally** - all your code stays on your machine
 
 ## Quick Installation
@@ -20,8 +19,8 @@ Better Context is an AI-powered tool that helps you maintain consistent coding g
 **Clone and install** (currently in development):
 
 ```bash
-git clone https://github.com/your-org/better-context.git
-cd better-context
+git clone https://github.com/bettercontext/btrx.git
+cd btrx
 npm install
 npm link
 ```

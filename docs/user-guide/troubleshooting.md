@@ -169,34 +169,37 @@ npm ERR! ERESOLVE unable to resolve dependency tree
 
 **Diagnostic Steps**:
 
-1. **Test MCP server directly**:
+1. **Test MCP server SSE endpoint**:
 
    ```bash
-   curl http://localhost:3002/health
+   curl http://localhost:3002/sse
    ```
 
-2. **Check MCP server status**:
+   This should return a streaming response or connection.
+
+2. **Test API server health**:
 
    ```bash
-   btrx status
+   curl http://localhost:3001/api/cwd
    ```
 
-3. **Verify AI tool configuration**:
-   ```bash
-   # For Claude Desktop
-   cat ~/.config/Claude/claude_desktop_config.json
-   ```
+   This should return your current working directory.
+
+3. **Verify AI client configuration**:
+   Check your AI client's MCP server configuration to ensure it's pointing to the correct Better Context server endpoints.
 
 **Solutions**:
 
-1. **Restart MCP server**
+1. **Restart Better Context**:
 
-2. **Test with direct connection**:
    ```bash
-   curl -X POST http://localhost:3002/message \
-     -H "Content-Type: application/json" \
-     -d '{"method": "tools/list"}'
+   # Stop the current instance (Ctrl+C if running in terminal)
+   # Then restart
+   btrx
    ```
+
+2. **Check SSE connection**:
+   The MCP server uses Server-Sent Events (SSE) for communication. Ensure your AI client is properly connecting to the SSE endpoint at `http://localhost:3002/sse`
 
 ## Getting Help
 
