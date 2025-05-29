@@ -16,6 +16,8 @@ Better Context is a developer tool that transforms how Large Language Models und
   <img src="app-screen.png" alt="Desktop UI" width="100%" height="auto">
 </div>
 
+https://github.com/user-attachments/assets/af5fb64f-e2ed-4f97-a0cc-3949281a14a9
+
 ## ⚠ Development Status
 
 Better Context is currently under active development and has been published for preview purposes only. For now, the project runs in development mode and will be published to npm once it's ready for beta testing.
