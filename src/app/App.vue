@@ -7,8 +7,8 @@ import Button from 'primevue/button'
 import Menu from 'primevue/menu'
 import Toast from 'primevue/toast'
 
-import appLogoDm from '@/app/assets/app-logo-dm.png'
-import appLogo from '@/app/assets/app-logo.png'
+import appLogoDm from '@/app/assets/logo-dark.png'
+import appLogo from '@/app/assets/logo.png'
 
 import DarkModeToggle from './components/DarkModeToggle.vue'
 import { useDarkMode } from './composables/useDarkMode'

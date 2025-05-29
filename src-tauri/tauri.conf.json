@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "btrx",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "identifier": "com.btrx.dev",
   "build": {
     "frontendDist": "../dist",

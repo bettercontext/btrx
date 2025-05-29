@@ -4,58 +4,55 @@
   <img src="src-tauri/icons/128x128.png" alt="Better Context" width="128" height="128">
 </div>
 
-Better Context is an early-stage developer tool that runs from any project directory and spins up an MCP server. It gives LLMs structured, contextual access to your codebase — enabling intelligent assistance, contextual workflows, and real-time awareness of your repo structure, Git state, and guidelines.
+<div align="center">
+  <b>Structured code context for smarter LLMs</b>
+</div>
+
+---
+
+Better Context is a developer tool that transforms how Large Language Models understand and work with your codebase. By running a single command from any project directory, it spins up an MCP (Model Context Protocol) server that gives LLMs structured, contextual access to your repository.
 
 <div align="center">
   <img src="app-screen.png" alt="Desktop UI" width="100%" height="auto">
 </div>
 
-<div align="center">
-  <img src="app-record.gif" alt="Desktop UI" width="100%" height="auto">
-</div>
+## ⚠ Development Status
 
-## Development
-
-1. **Install Dependencies:**
+Better Context is currently under active development and has been published for preview purposes only. For now, the project runs in development mode and will be published to npm once it's ready for beta testing.
 
 ```bash
+# Clone the repository
+git clone https://github.com/bettercontext/btrx.git
+
+# Navigate to the cloned repository
+cd btrx
+
+# Install dependencies
 npm install
-```
 
-2.  **Link the Global Command:**
-
-To make the `btrx` command available system-wide, link the package:
-
-```bash
+# Link the global command
 npm link
-```
 
-3.  **Run the Development Server:**
-
-Navigate to any project directory in your terminal and run:
-
-```bash
+# Launch from any project directory
 btrx
 ```
 
-This command starts the development server with hot-reloading for both server and frontend. The server automatically detects the directory (`process.cwd()`) from which `btrx` was executed. The frontend opens in a Tauri desktop application and displays the current directory along with Git information if available.
+This command starts the development server with hot-reloading for both server and frontend. The server automatically detects the directory from which `btrx` was executed. The frontend opens in a Tauri desktop application.
 
-## Scripts
+## Configuration
 
-- `btrx`: Starts the development server with hot-reloading for both server and frontend. Opens the frontend in a Tauri desktop app. Applies migrations first. Currently runs in development mode by default until the project is more mature.
-- `npm run db:migrate`: Applies pending database migrations using `drizzle-kit push`.
-- `npm run db:generate`: Generates new migration files based on schema changes using `drizzle-kit generate`.
-- `npm test`: Runs unit tests.
-- `npm run check:all`: Runs all checks including tests and dependency analysis.
+Better Context uses several configurable ports that can be adjusted in `src/config.ts`.
 
-## Customization
+## Architecture Overview
 
-1.  **Configure:** Adjust port number in `src/config.ts`.
+- MCP Server: Provides structured access to your codebase via the Model Context Protocol
+- SSE Transport: Real-time communication using Server-Sent Event
+- Desktop App: Cross-platform Tauri application with Vue.js
+- Database: Local PGlite database with Drizzle ORM
 
-## Resources
+## Documentation
 
-- **Model Context Protocol:** [https://modelcontextprotocol.io/](https://modelcontextprotocol.io/)
-- **MCP Inspector:** [https://github.com/modelcontextprotocol/inspector](https://github.com/modelcontextprotocol/inspector)
+For detailed documentation, please refer to the [Better Context Documentation](https://docs.bettercontext.dev).
 
 ## License
 
