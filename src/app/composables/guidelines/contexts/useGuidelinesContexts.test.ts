@@ -27,7 +27,6 @@ describe('useGuidelinesContexts', () => {
   const mockRepositoryPath = '/test/path'
 
   beforeEach(() => {
-    vi.clearAllMocks()
     vi.mocked(api.fetchApi).mockReset()
     mockToast.add.mockReset()
   })

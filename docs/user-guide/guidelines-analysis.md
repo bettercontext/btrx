@@ -9,25 +9,25 @@ It combines repository analysis, AI processing, and structured guidelines genera
 Make sure you have at least one context set up for the current project and Better Context is running. Prompt the following:
 
 ```
-Using better context, run the coding guidelines analysis for this project.
+Using better context MCP, run the tool guidelines_analysis to initiate the coding guidelines analysis workflow for this project.
 ```
 
 ## Workflow Architecture
 
 ```mermaid
 graph TD
-    A[User/AI Initiates Analysis] --> B[MCP Tool: start_guidelines_analysis_flow]
+    A[User/AI Initiates Analysis] --> B[MCP Tool: guidelines_analysis]
     B --> C[Repository Validation]
     C --> D[Load All Contexts for Repository]
     D --> E[Create Context Queue]
     E --> F[Return Initial Prompt with First Context]
     F --> G[Context Processing Loop]
 
-    G --> H[MCP Tool: get_guidelines_analysis_prompt_for_context]
+    G --> H[MCP Tool: guidelines_analysis with contextId]
     H --> I[File System Scanning for Context]
     I --> J[Code Pattern Analysis]
     J --> K[AI Generates Guidelines]
-    K --> L[MCP Tool: save_guidelines]
+    K --> L[MCP Tool: guidelines_save]
     L --> M[Database Storage]
     M --> N{More Contexts?}
 
@@ -48,7 +48,7 @@ graph TD
 
 ### 1. Analysis Initiation
 
-The workflow begins when an AI assistant calls the `start_guidelines_analysis_flow` MCP tool:
+The workflow begins when an AI assistant calls the `guidelines_analysis` MCP tool without a contextId:
 
 - **Repository Detection**: Identifies the current repository using Git origin URL or working directory path
 - **Context Loading**: Retrieves all defined guidelines contexts for the repository
@@ -63,7 +63,7 @@ The workflow processes each context sequentially through a loop mechanism:
 
 1. **Context Analysis Setup**
 
-   - AI calls `get_guidelines_analysis_prompt_for_context` with the current context ID
+   - AI calls `guidelines_analysis` with the current context ID
    - Tool returns context-specific analysis instructions and file patterns
 
 2. **Repository Analysis**
@@ -78,7 +78,7 @@ The workflow processes each context sequentially through a loop mechanism:
    - Guidelines are tailored to the specific context (testing, architecture, etc.)
 
 4. **Guidelines Storage**
-   - AI calls `save_guidelines` with generated guidelines and context ID
+   - AI calls `guidelines_save` with generated guidelines and context ID
    - Guidelines are stored in the database and associated with the context
 
 #### Loop Continuation:

@@ -1,53 +1,18 @@
 export const guidelinesTools = [
   {
-    name: 'start_guidelines_analysis_flow',
-    title: 'Start Guidelines Analysis Flow',
+    name: 'guidelines_analysis',
+    title: 'Guidelines Analysis',
     description:
-      'Initiates the guidelines analysis flow by fetching repository contexts and returning the initial prompt to guide client-side processing of the first context.',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-      additionalProperties: false,
-    },
-    outputSchema: {
-      type: 'object',
-      properties: {
-        content: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              type: { type: 'string', enum: ['text'] },
-              text: { type: 'string' },
-            },
-            required: ['type', 'text'],
-            additionalProperties: false,
-          },
-          minItems: 1,
-          maxItems: 1,
-          description:
-            'An array containing a single content block with instructions to start the sequential analysis loop for the first context, or a message if no contexts are found.',
-        },
-      },
-      required: ['content'],
-      additionalProperties: false,
-    },
-  },
-  {
-    name: 'get_guidelines_analysis_prompt_for_context',
-    title: 'Get Guidelines Analysis Prompt for Context',
-    description:
-      'Returns a specific prompt for the LLM to perform guidelines analysis for a given context ID.',
+      'Unified tool for guidelines analysis flow. When called without contextId, initiates the analysis flow and returns the initial prompt. When called with contextId, returns the specific prompt for that context.',
     inputSchema: {
       type: 'object',
       properties: {
         contextId: {
           type: 'number',
           description:
-            'The ID of the context for which to generate the analysis prompt.',
+            'Optional context ID. If not provided, starts the analysis flow. If provided, returns the prompt for this specific context.',
         },
       },
-      required: ['contextId'],
       additionalProperties: false,
     },
     outputSchema: {
@@ -67,7 +32,7 @@ export const guidelinesTools = [
           minItems: 1,
           maxItems: 1,
           description:
-            'An array containing a single content block with the generated prompt for the specified context.',
+            'An array containing a single content block with analysis instructions or context-specific prompt.',
         },
       },
       required: ['content'],
@@ -75,8 +40,8 @@ export const guidelinesTools = [
     },
   },
   {
-    name: 'save_guidelines',
-    title: 'Save Guidelines Batch',
+    name: 'guidelines_save',
+    title: 'Save Guidelines',
     description:
       'Saves a batch of new guidelines to the database for a given context ID.',
     inputSchema: {
@@ -112,7 +77,7 @@ export const guidelinesTools = [
           minItems: 1,
           maxItems: 1,
           description:
-            'An array containing a single content block with a success message.',
+            'An array containing a single content block with a success message and next steps.',
         },
       },
       required: ['content'],

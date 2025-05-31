@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { db } from '@/db'
 import { guidelinesContexts } from '@/db/schema'
 
-import { handleSaveGuidelines } from './saveGuidelines'
+import { handleGuidelinesSave } from './guidelinesSave'
 
 vi.mock('@/db', () => ({
   db: {
@@ -27,7 +27,7 @@ vi.mock('@/db', () => ({
   },
 }))
 
-describe('handleSaveGuidelines - Validation Error Scenarios', () => {
+describe('handleGuidelinesSave - Validation Error Scenarios', () => {
   const mockGuidelinesList = ['guideline1', 'guideline2']
   const mockContextId = 10
   const mcpContext = { CWD: '/test/project' }
@@ -45,25 +45,25 @@ describe('handleSaveGuidelines - Validation Error Scenarios', () => {
 
   it('should throw McpError for invalid arguments (missing guidelines)', async () => {
     const args = { contextId: mockContextId } // Missing guidelines
-    await expect(handleSaveGuidelines(args as any, mcpContext)).rejects.toThrow(
+    await expect(handleGuidelinesSave(args as any, mcpContext)).rejects.toThrow(
       McpError,
     )
     try {
-      await handleSaveGuidelines(args as any, mcpContext)
+      await handleGuidelinesSave(args as any, mcpContext)
     } catch (e: any) {
       expect(e.code).toBe(ErrorCode.InvalidParams)
-      expect(e.message).toContain('Invalid arguments for save_guidelines tool')
+      expect(e.message).toContain('Invalid arguments for guidelines_save tool')
       expect(e.message).toContain('Required') // Zod error message for missing field
     }
   })
 
   it('should throw McpError for invalid arguments (empty guidelines array)', async () => {
     const args = { guidelines: [], contextId: mockContextId }
-    await expect(handleSaveGuidelines(args, mcpContext)).rejects.toThrow(
+    await expect(handleGuidelinesSave(args, mcpContext)).rejects.toThrow(
       McpError,
     )
     try {
-      await handleSaveGuidelines(args, mcpContext)
+      await handleGuidelinesSave(args, mcpContext)
     } catch (e: any) {
       expect(e.code).toBe(ErrorCode.InvalidParams)
       expect(e.message).toMatch(/Array must contain at least 1 element\(s\)/u) // Zod error for min array length
@@ -72,11 +72,11 @@ describe('handleSaveGuidelines - Validation Error Scenarios', () => {
 
   it('should throw McpError for invalid arguments (contextId not a number)', async () => {
     const args = { guidelines: mockGuidelinesList, contextId: 'not-a-number' }
-    await expect(handleSaveGuidelines(args as any, mcpContext)).rejects.toThrow(
+    await expect(handleGuidelinesSave(args as any, mcpContext)).rejects.toThrow(
       McpError,
     )
     try {
-      await handleSaveGuidelines(args as any, mcpContext)
+      await handleGuidelinesSave(args as any, mcpContext)
     } catch (e: any) {
       expect(e.code).toBe(ErrorCode.InvalidParams)
       expect(e.message).toContain('Expected number, received string') // Zod error for type mismatch
@@ -85,11 +85,11 @@ describe('handleSaveGuidelines - Validation Error Scenarios', () => {
 
   it('should throw McpError for invalid arguments (missing contextId)', async () => {
     const args = { guidelines: mockGuidelinesList }
-    await expect(handleSaveGuidelines(args as any, mcpContext)).rejects.toThrow(
+    await expect(handleGuidelinesSave(args as any, mcpContext)).rejects.toThrow(
       McpError,
     )
     try {
-      await handleSaveGuidelines(args as any, mcpContext)
+      await handleGuidelinesSave(args as any, mcpContext)
     } catch (e: any) {
       expect(e.code).toBe(ErrorCode.InvalidParams)
       expect(e.message).toContain('Required') // Zod error for missing field
@@ -103,9 +103,9 @@ describe('handleSaveGuidelines - Validation Error Scenarios', () => {
 
     const args = { guidelines: mockGuidelinesList, contextId: mockContextId }
     try {
-      await handleSaveGuidelines(args, mcpContext)
+      await handleGuidelinesSave(args, mcpContext)
       expect.fail(
-        'Expected handleSaveGuidelines to throw an McpError, but it did not.',
+        'Expected handleGuidelinesSave to throw an McpError, but it did not.',
       )
     } catch (e: any) {
       expect(e.code).toBe(ErrorCode.InvalidParams)
@@ -124,11 +124,11 @@ describe('handleSaveGuidelines - Validation Error Scenarios', () => {
       contextId: mockContextId,
       unexpectedParam: 'test',
     }
-    await expect(handleSaveGuidelines(args, mcpContext)).rejects.toThrow(
+    await expect(handleGuidelinesSave(args, mcpContext)).rejects.toThrow(
       McpError,
     )
     try {
-      await handleSaveGuidelines(args, mcpContext)
+      await handleGuidelinesSave(args, mcpContext)
     } catch (e: any) {
       expect(e.code).toBe(ErrorCode.InvalidParams)
       expect(e.message).toContain(
