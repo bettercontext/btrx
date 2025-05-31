@@ -2,13 +2,19 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import * as promptReader from '@/helpers/promptReader'
+import * as guidelinesService from '@/services/guidelines'
 import { db } from '@/db'
 import { guidelinesContexts } from '@/db/schema'
 
-import { handleSaveGuidelines } from './saveGuidelines'
+import { handleGuidelinesSave } from './guidelinesSave'
 
 vi.mock('@/helpers/promptReader', () => ({
   readPrompt: vi.fn(),
+}))
+
+vi.mock('@/services/guidelines', () => ({
+  getGuidelinesForRepositoryById: vi.fn(),
+  createGuidelineByContextId: vi.fn(),
 }))
 
 vi.mock('@/db', () => ({
@@ -25,15 +31,10 @@ vi.mock('@/db', () => ({
         })),
       })),
     })),
-    insert: vi.fn(() => ({
-      values: vi.fn(() => ({
-        returning: vi.fn(),
-      })),
-    })),
   },
 }))
 
-describe('handleSaveGuidelines - Success Scenarios', () => {
+describe('handleGuidelinesSave - Success Scenarios', () => {
   const mockGuidelinesList = ['guideline1', 'guideline2']
   const mockContextId = 10
   const mockRepositoryId = 1
@@ -66,23 +67,19 @@ describe('handleSaveGuidelines - Success Scenarios', () => {
       prompt: 'test prompt',
     })
 
-    // Mock existing guidelines check (no existing guidelines)
-    vi.mocked(db.select).mockReturnValueOnce({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue([]),
-      }),
-    } as any)
+    // Mock existing guidelines check (no existing guidelines for this context)
+    vi.mocked(
+      guidelinesService.getGuidelinesForRepositoryById,
+    ).mockResolvedValue([])
 
-    // Mock guidelines insertion
-    vi.mocked(db.insert).mockReturnValue({
-      values: vi.fn().mockReturnValue({
-        returning: vi
-          .fn()
-          .mockResolvedValue(
-            mockGuidelinesList.map((_, i) => ({ id: i + 100 })),
-          ),
-      }),
-    } as any)
+    // Mock guidelines creation
+    vi.mocked(guidelinesService.createGuidelineByContextId).mockResolvedValue({
+      id: 100,
+      content: 'mocked',
+      active: true,
+      contextId: mockContextId,
+      contextName: 'Test Context',
+    })
 
     // Mock contexts query for flow continuation
     vi.mocked(db.select).mockReturnValueOnce({
@@ -97,7 +94,7 @@ describe('handleSaveGuidelines - Success Scenarios', () => {
     vi.mocked(promptReader.readPrompt).mockResolvedValue(expectedPrompt)
 
     const args = { guidelines: mockGuidelinesList, contextId: mockContextId }
-    const result = await handleSaveGuidelines(args, { CWD: '/test/project' })
+    const result = await handleGuidelinesSave(args, { CWD: '/test/project' })
 
     expect(result).toEqual({
       content: [{ type: 'text', text: expectedPrompt }],
@@ -106,6 +103,13 @@ describe('handleSaveGuidelines - Success Scenarios', () => {
     expect(db.query.guidelinesContexts.findFirst).toHaveBeenCalledWith({
       where: eq(guidelinesContexts.id, mockContextId),
     })
+
+    expect(
+      guidelinesService.getGuidelinesForRepositoryById,
+    ).toHaveBeenCalledWith(mockRepositoryId)
+    expect(guidelinesService.createGuidelineByContextId).toHaveBeenCalledTimes(
+      mockGuidelinesList.length,
+    )
 
     expect(promptReader.readPrompt).toHaveBeenCalledWith(
       'guidelines',
@@ -132,21 +136,27 @@ describe('handleSaveGuidelines - Success Scenarios', () => {
       prompt: 'test prompt',
     })
 
-    // Mock existing guidelines check (one exists)
-    vi.mocked(db.select).mockReturnValueOnce({
-      from: vi.fn().mockReturnValue({
-        where: vi
-          .fn()
-          .mockResolvedValue([{ id: 99, content: existingGuidelineContent }]),
-      }),
-    } as any)
+    // Mock existing guidelines check (one exists for this context)
+    vi.mocked(
+      guidelinesService.getGuidelinesForRepositoryById,
+    ).mockResolvedValue([
+      {
+        id: 99,
+        content: existingGuidelineContent,
+        active: true,
+        contextId: mockContextId,
+        contextName: 'Test Context',
+      },
+    ])
 
-    // Mock guidelines insertion (only new one)
-    vi.mocked(db.insert).mockReturnValue({
-      values: vi.fn().mockReturnValue({
-        returning: vi.fn().mockResolvedValue([{ id: 101 }]),
-      }),
-    } as any)
+    // Mock guidelines creation (only called for the new guideline)
+    vi.mocked(guidelinesService.createGuidelineByContextId).mockResolvedValue({
+      id: 101,
+      content: 'mocked',
+      active: true,
+      contextId: mockContextId,
+      contextName: 'Test Context',
+    })
 
     // Mock contexts query for flow continuation
     vi.mocked(db.select).mockReturnValueOnce({
@@ -161,11 +171,18 @@ describe('handleSaveGuidelines - Success Scenarios', () => {
     vi.mocked(promptReader.readPrompt).mockResolvedValue(expectedPrompt)
 
     const args = { guidelines: mockGuidelinesList, contextId: mockContextId }
-    const result = await handleSaveGuidelines(args, { CWD: '/test/project' })
+    const result = await handleGuidelinesSave(args, { CWD: '/test/project' })
 
     expect(result).toEqual({
       content: [{ type: 'text', text: expectedPrompt }],
     })
+
+    expect(
+      guidelinesService.getGuidelinesForRepositoryById,
+    ).toHaveBeenCalledWith(mockRepositoryId)
+    expect(guidelinesService.createGuidelineByContextId).toHaveBeenCalledTimes(
+      1,
+    )
 
     expect(promptReader.readPrompt).toHaveBeenCalledWith(
       'guidelines',
@@ -183,17 +200,18 @@ describe('handleSaveGuidelines - Success Scenarios', () => {
       prompt: 'test prompt',
     })
 
-    // Mock existing guidelines check (all exist)
-    vi.mocked(db.select).mockReturnValueOnce({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue(
-          mockGuidelinesList.map((guideline, i) => ({
-            id: 200 + i,
-            content: guideline,
-          })),
-        ),
-      }),
-    } as any)
+    // Mock existing guidelines check (all exist for this context)
+    vi.mocked(
+      guidelinesService.getGuidelinesForRepositoryById,
+    ).mockResolvedValue(
+      mockGuidelinesList.map((guideline, i) => ({
+        id: 200 + i,
+        content: guideline,
+        active: true,
+        contextId: mockContextId,
+        contextName: 'Test Context',
+      })),
+    )
 
     // Mock contexts query for flow continuation
     vi.mocked(db.select).mockReturnValueOnce({
@@ -208,13 +226,17 @@ describe('handleSaveGuidelines - Success Scenarios', () => {
     vi.mocked(promptReader.readPrompt).mockResolvedValue(expectedPrompt)
 
     const args = { guidelines: mockGuidelinesList, contextId: mockContextId }
-    const result = await handleSaveGuidelines(args, { CWD: '/test/project' })
+    const result = await handleGuidelinesSave(args, { CWD: '/test/project' })
 
     expect(result).toEqual({
       content: [{ type: 'text', text: expectedPrompt }],
     })
 
-    expect(db.insert).not.toHaveBeenCalled()
+    expect(
+      guidelinesService.getGuidelinesForRepositoryById,
+    ).toHaveBeenCalledWith(mockRepositoryId)
+    expect(guidelinesService.createGuidelineByContextId).not.toHaveBeenCalled()
+
     expect(promptReader.readPrompt).toHaveBeenCalledWith(
       'guidelines',
       'continueGuidelinesAnalysis',
@@ -238,22 +260,18 @@ describe('handleSaveGuidelines - Success Scenarios', () => {
     })
 
     // Mock existing guidelines check (no existing guidelines)
-    vi.mocked(db.select).mockReturnValueOnce({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue([]),
-      }),
-    } as any)
+    vi.mocked(
+      guidelinesService.getGuidelinesForRepositoryById,
+    ).mockResolvedValue([])
 
-    // Mock guidelines insertion
-    vi.mocked(db.insert).mockReturnValue({
-      values: vi.fn().mockReturnValue({
-        returning: vi
-          .fn()
-          .mockResolvedValue(
-            mockGuidelinesList.map((_, i) => ({ id: i + 300 })),
-          ),
-      }),
-    } as any)
+    // Mock guidelines creation
+    vi.mocked(guidelinesService.createGuidelineByContextId).mockResolvedValue({
+      id: 300,
+      content: 'mocked',
+      active: true,
+      contextId: lastContextId,
+      contextName: 'Last Context',
+    })
 
     // Mock contexts query - this is the last context
     vi.mocked(db.select).mockReturnValueOnce({
@@ -267,11 +285,18 @@ describe('handleSaveGuidelines - Success Scenarios', () => {
     const expectedPromptText = `Guidelines analysis complete for all contexts. Saved ${mockGuidelinesList.length} guidelines for the last context (ID: ${lastContextId}). 0 guidelines already existed. 0 errors.`
 
     const args = { guidelines: mockGuidelinesList, contextId: lastContextId }
-    const result = await handleSaveGuidelines(args, { CWD: '/test/project' })
+    const result = await handleGuidelinesSave(args, { CWD: '/test/project' })
 
     expect(result).toEqual({
       content: [{ type: 'text', text: expectedPromptText }],
     })
+
+    expect(
+      guidelinesService.getGuidelinesForRepositoryById,
+    ).toHaveBeenCalledWith(mockRepositoryId)
+    expect(guidelinesService.createGuidelineByContextId).toHaveBeenCalledTimes(
+      mockGuidelinesList.length,
+    )
 
     expect(promptReader.readPrompt).not.toHaveBeenCalled()
   })

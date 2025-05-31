@@ -1,25 +1,34 @@
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import * as guidelinesService from '@/services/guidelines'
 import { db } from '@/db'
 
-import { handleSaveGuidelines } from './saveGuidelines'
+import { handleGuidelinesSave } from './guidelinesSave'
 
-// Mock the entire db module properly
-vi.mock('@/db', () => {
-  const mockDb = {
+vi.mock('@/services/guidelines', () => ({
+  getGuidelinesForRepositoryById: vi.fn(),
+  createGuideline: vi.fn(),
+}))
+
+vi.mock('@/db', () => ({
+  db: {
     query: {
       guidelinesContexts: {
         findFirst: vi.fn(),
       },
     },
-    select: vi.fn(),
-    insert: vi.fn(),
-  }
-  return { db: mockDb }
-})
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          orderBy: vi.fn(),
+        })),
+      })),
+    })),
+  },
+}))
 
-describe('handleSaveGuidelines - DB and Runtime Error Scenarios', () => {
+describe('handleGuidelinesSave - DB and Runtime Error Scenarios', () => {
   const mockGuidelinesList = ['guideline1', 'guideline2']
   const mockContextId = 10
   const mockRepositoryId = 1
@@ -42,11 +51,11 @@ describe('handleSaveGuidelines - DB and Runtime Error Scenarios', () => {
     )
 
     const args = { guidelines: mockGuidelinesList, contextId: mockContextId }
-    await expect(handleSaveGuidelines(args, mcpContext)).rejects.toThrow(
+    await expect(handleGuidelinesSave(args, mcpContext)).rejects.toThrow(
       McpError,
     )
     try {
-      await handleSaveGuidelines(args, mcpContext)
+      await handleGuidelinesSave(args, mcpContext)
     } catch (e: any) {
       expect(e.code).toBe(ErrorCode.InternalError)
       expect(e.message).toContain('DB context validation failed')
@@ -62,27 +71,24 @@ describe('handleSaveGuidelines - DB and Runtime Error Scenarios', () => {
       prompt: 'test prompt',
     })
 
-    // Mock the first db.select call (existing guidelines check) to fail
-    const mockFrom = vi.fn()
-    const mockWhere = vi
-      .fn()
-      .mockRejectedValue(new Error('DB select guidelines failed'))
-    mockFrom.mockReturnValue({ where: mockWhere })
-    vi.mocked(db.select).mockReturnValue({ from: mockFrom } as any)
+    // Mock service to fail on getGuidelinesForRepositoryById
+    vi.mocked(
+      guidelinesService.getGuidelinesForRepositoryById,
+    ).mockRejectedValue(new Error('Service guidelines fetch failed'))
 
     const args = { guidelines: mockGuidelinesList, contextId: mockContextId }
-    await expect(handleSaveGuidelines(args, mcpContext)).rejects.toThrow(
+    await expect(handleGuidelinesSave(args, mcpContext)).rejects.toThrow(
       McpError,
     )
     try {
-      await handleSaveGuidelines(args, mcpContext)
+      await handleGuidelinesSave(args, mcpContext)
     } catch (e: any) {
       expect(e.code).toBe(ErrorCode.InternalError)
-      expect(e.message).toContain('DB select guidelines failed')
+      expect(e.message).toContain('Service guidelines fetch failed')
     }
   })
 
-  it('should throw McpError if guidelines insertion fails', async () => {
+  it('should handle guidelines creation errors gracefully and report them', async () => {
     // Mock successful context validation
     vi.mocked(db.query.guidelinesContexts.findFirst).mockResolvedValue({
       id: mockContextId,
@@ -91,30 +97,35 @@ describe('handleSaveGuidelines - DB and Runtime Error Scenarios', () => {
       prompt: 'test prompt',
     })
 
-    // Mock successful first db.select call (existing guidelines check returns empty)
-    const mockFrom1 = vi.fn()
-    const mockWhere1 = vi.fn().mockResolvedValue([])
-    mockFrom1.mockReturnValue({ where: mockWhere1 })
-    vi.mocked(db.select).mockReturnValue({ from: mockFrom1 } as any)
+    // Mock successful guidelines fetch (no existing guidelines)
+    vi.mocked(
+      guidelinesService.getGuidelinesForRepositoryById,
+    ).mockResolvedValue([])
 
-    // Mock failed guidelines insertion
-    const mockValues = vi.fn()
-    const mockReturning = vi
-      .fn()
-      .mockRejectedValue(new Error('DB guidelines insert failed'))
-    mockValues.mockReturnValue({ returning: mockReturning })
-    vi.mocked(db.insert).mockReturnValue({ values: mockValues } as any)
+    // Mock failed guidelines creation
+    vi.mocked(guidelinesService.createGuideline).mockRejectedValue(
+      new Error('Service guidelines creation failed'),
+    )
+
+    // Mock successful contexts query (needed for flow continuation)
+    vi.mocked(db.select).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          orderBy: vi
+            .fn()
+            .mockResolvedValue([{ id: mockContextId, name: 'Test Context' }]),
+        }),
+      }),
+    } as any)
 
     const args = { guidelines: mockGuidelinesList, contextId: mockContextId }
-    await expect(handleSaveGuidelines(args, mcpContext)).rejects.toThrow(
-      McpError,
-    )
-    try {
-      await handleSaveGuidelines(args, mcpContext)
-    } catch (e: any) {
-      expect(e.code).toBe(ErrorCode.InternalError)
-      expect(e.message).toContain('DB guidelines insert failed')
-    }
+    const result = await handleGuidelinesSave(args, mcpContext)
+
+    // Should complete successfully but report errors
+    expect(result).toHaveProperty('content')
+    expect(result.content[0].type).toBe('text')
+    expect(result.content[0].text).toContain('2 errors')
+    expect(result.content[0].text).toContain('Saved 0 guidelines')
   })
 
   it('should throw McpError if contexts query for flow continuation fails', async () => {
@@ -126,24 +137,29 @@ describe('handleSaveGuidelines - DB and Runtime Error Scenarios', () => {
       prompt: 'test prompt',
     })
 
-    // Mock successful guidelines insertion
-    const mockValues = vi.fn()
-    const mockReturning = vi.fn().mockResolvedValue([{ id: 1 }, { id: 2 }])
-    mockValues.mockReturnValue({ returning: mockReturning })
-    vi.mocked(db.insert).mockReturnValue({ values: mockValues } as any)
+    // Mock successful guidelines service calls
+    vi.mocked(
+      guidelinesService.getGuidelinesForRepositoryById,
+    ).mockResolvedValue([])
+    vi.mocked(guidelinesService.createGuideline).mockResolvedValue({
+      id: 100,
+      content: 'mocked',
+      active: true,
+      contextId: mockContextId,
+      contextName: 'Test Context',
+    })
 
-    // For this test, we'll just create a general database error scenario
-    // Since the sequential mocking is complex, we'll trigger an error during the query flow
+    // Mock the contexts query to fail
     vi.mocked(db.select).mockImplementation(() => {
       throw new Error('DB select all contexts failed')
     })
 
     const args = { guidelines: mockGuidelinesList, contextId: mockContextId }
-    await expect(handleSaveGuidelines(args, mcpContext)).rejects.toThrow(
+    await expect(handleGuidelinesSave(args, mcpContext)).rejects.toThrow(
       McpError,
     )
     try {
-      await handleSaveGuidelines(args, mcpContext)
+      await handleGuidelinesSave(args, mcpContext)
     } catch (e: any) {
       expect(e.code).toBe(ErrorCode.InternalError)
       expect(e.message).toContain('DB select all contexts failed')
@@ -158,12 +174,12 @@ describe('handleSaveGuidelines - DB and Runtime Error Scenarios', () => {
     )
 
     const args = { guidelines: mockGuidelinesList, contextId: mockContextId }
-    await expect(handleSaveGuidelines(args, mcpContext)).rejects.toThrow(
+    await expect(handleGuidelinesSave(args, mcpContext)).rejects.toThrow(
       McpError,
     )
 
     try {
-      await handleSaveGuidelines(args, mcpContext)
+      await handleGuidelinesSave(args, mcpContext)
     } catch (e: any) {
       expect(e.code).toBe(ErrorCode.InternalError)
       expect(e.message).toContain('Unexpected database error')

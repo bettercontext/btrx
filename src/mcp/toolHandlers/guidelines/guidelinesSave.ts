@@ -1,10 +1,14 @@
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
-import { and, eq, or } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '@/db'
-import { guidelines, guidelinesContexts } from '@/db/schema'
+import { guidelinesContexts } from '@/db/schema'
 import { readPrompt } from '@/helpers/promptReader'
+import {
+  createGuidelineByContextId,
+  getGuidelinesForRepositoryById,
+} from '@/services/guidelines'
 
 const SaveGuidelinesInputSchema = z
   .object({
@@ -13,22 +17,22 @@ const SaveGuidelinesInputSchema = z
   })
   .strict()
 
-export async function handleSaveGuidelines(
+export async function handleGuidelinesSave(
   args: unknown,
   mcpContext?: { CWD?: string },
 ) {
-  console.log('[SaveGuidelines Handler] Received args:', args)
-  console.log('[SaveGuidelines Handler] MCP Context:', mcpContext)
+  console.log('[GuidelinesSave Handler] Received args:', args)
+  console.log('[GuidelinesSave Handler] MCP Context:', mcpContext)
   const parseResult = SaveGuidelinesInputSchema.safeParse(args)
 
   if (!parseResult.success) {
     console.error(
-      '[SaveGuidelines Handler] Invalid arguments:',
+      '[GuidelinesSave Handler] Invalid arguments:',
       parseResult.error,
     )
     throw new McpError(
       ErrorCode.InvalidParams,
-      `Invalid arguments for save_guidelines tool: ${parseResult.error.message}`,
+      `Invalid arguments for guidelines_save tool: ${parseResult.error.message}`,
     )
   }
 
@@ -41,7 +45,7 @@ export async function handleSaveGuidelines(
 
     if (!currentContextRecord) {
       console.error(
-        `[SaveGuidelines Handler] Context ID "${contextId}" not found`,
+        `[GuidelinesSave Handler] Context ID "${contextId}" not found`,
       )
       throw new McpError(
         ErrorCode.InvalidParams,
@@ -58,56 +62,36 @@ export async function handleSaveGuidelines(
       existingGuidelineId?: number
     }[] = []
 
-    const existingGuidelinesCheckConditions = guidelinesList.map(
-      (guidelineContent) => {
-        return and(
-          eq(guidelines.content, guidelineContent),
-          eq(guidelines.contextId, contextId),
-        )
-      },
+    // Get existing guidelines for this context using the new service
+    const allGuidelines = await getGuidelinesForRepositoryById(repositoryId)
+    const existingGuidelines = allGuidelines.filter(
+      (g) => g.contextId === contextId,
     )
 
-    let foundExistingGuidelines: { id: number; content: string }[] = []
-    if (existingGuidelinesCheckConditions.length > 0) {
-      foundExistingGuidelines = await db
-        .select({ id: guidelines.id, content: guidelines.content })
-        .from(guidelines)
-        .where(or(...existingGuidelinesCheckConditions))
-    }
-
-    const guidelinesToInsert: {
-      content: string
-      contextId: number
-      active: boolean
-    }[] = []
     for (const guidelineContent of guidelinesList) {
-      const isExisting = foundExistingGuidelines.some(
-        (er) => er.content === guidelineContent,
+      // Check if guideline already exists
+      const existingGuideline = existingGuidelines.find(
+        (g) => g.content === guidelineContent,
       )
-      if (isExisting) {
-        const existingGuideline = foundExistingGuidelines.find(
-          (er) => er.content === guidelineContent,
-        )
+
+      if (existingGuideline) {
         existingGuidelinesMessages.push({
           guideline: guidelineContent,
           message: 'Guideline already exists for this context.',
-          existingGuidelineId: existingGuideline?.id,
+          existingGuidelineId: existingGuideline.id,
         })
       } else {
-        guidelinesToInsert.push({
-          content: guidelineContent,
-          contextId,
-          active: false,
-        })
+        try {
+          // Create new guideline using the context ID directly
+          await createGuidelineByContextId(guidelineContent, contextId)
+          savedCount++
+        } catch (error) {
+          errors.push({
+            guideline: guidelineContent,
+            error: error instanceof Error ? error.message : String(error),
+          })
+        }
       }
-    }
-
-    if (guidelinesToInsert.length > 0) {
-      const insertResult = await db
-        .insert(guidelines)
-        .values(guidelinesToInsert)
-        .returning({ id: guidelines.id })
-      savedCount = insertResult.length
     }
 
     const allRepoContexts = await db
@@ -140,24 +124,24 @@ export async function handleSaveGuidelines(
         },
       )
       console.log(
-        `[SaveGuidelines Handler] Saved ${savedCount} guidelines for context ${contextId}. Next context: ID ${nextContext.id} ("${nextContext.name}")`,
+        `[GuidelinesSave Handler] Saved ${savedCount} guidelines for context ${contextId}. Next context: ID ${nextContext.id} ("${nextContext.name}")`,
       )
     } else {
       promptText = `Guidelines analysis complete for all contexts. Saved ${savedCount} guidelines for the last context (ID: ${contextId}). ${existingGuidelinesMessages.length} guidelines already existed. ${errors.length} errors.`
       console.log(
-        `[SaveGuidelines Handler] Saved ${savedCount} guidelines for context ${contextId}. This was the last context.`,
+        `[GuidelinesSave Handler] Saved ${savedCount} guidelines for context ${contextId}. This was the last context.`,
       )
     }
 
     return { content: [{ type: 'text', text: promptText }] }
   } catch (error) {
-    console.error('[SaveGuidelines Handler] Caught error:', error)
+    console.error('[GuidelinesSave Handler] Caught error:', error)
     if (error instanceof McpError) {
       throw error
     }
     throw new McpError(
       ErrorCode.InternalError,
-      `Operation failed in handleSaveGuidelines: ${error instanceof Error ? error.message : String(error)}`,
+      `Operation failed in handleGuidelinesSave: ${error instanceof Error ? error.message : String(error)}`,
     )
   }
 }

@@ -6,14 +6,14 @@ Let's start with the first context: "{{firstContextName}}" (ID: {{firstContextId
 
 Please perform the following steps for the context "{{firstContextName}}" (ID: {{firstContextId}}):
 
-1.  Call the MCP tool named 'getGuidelinesAnalysisPromptForContext' with the argument:
+1.  Call the MCP tool named 'guidelines_analysis' with the argument:
     ```json
     {
       "contextId": {{firstContextId}}
     }
     ```
 2.  The tool will return a specific prompt for analyzing the "{{firstContextName}}" code. Use this prompt to have the AI generate a list of guidelines (as an array of strings).
-3.  Once the guidelines are generated, call the MCP tool named 'saveGuidelines' with the arguments:
+3.  Once the guidelines are generated, call the MCP tool named 'guidelines_save' with the arguments:
     ```json
     {
       "guidelines": <the_generated_array_of_guideline_strings>,

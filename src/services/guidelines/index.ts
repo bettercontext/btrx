@@ -3,6 +3,7 @@ export {
   getGuidelinesForRepository,
   getGuidelinesForRepositoryById,
   createGuideline,
+  createGuidelineByContextId,
   updateGuidelineState,
   updateGuidelineContent,
   deleteGuideline,

@@ -51,15 +51,13 @@ The source code is organized as follows:
 
 ### Guidelines Analysis Tools
 
-- **`start_guidelines_analysis_flow`**
-  - Initiates guidelines analysis for repository contexts
-  - Manages the analysis workflow state
-- **`get_guidelines_analysis_prompt_for_context`**
-  - Generates context-specific analysis prompts
-  - Handles custom context parameters
-- **`save_guidelines`**
-  - Persists generated guidelines
-  - Associates guidelines with specific contexts
+- **`guidelines_analysis`**
+  - Unified tool for guidelines analysis flow
+  - When called without contextId: initiates the analysis flow and returns the initial prompt
+  - When called with contextId: returns the specific prompt for that context
+- **`guidelines_save`**
+  - Saves a batch of new guidelines to the database for a given context ID
+  - Persists generated guidelines and associates them with specific contexts
 
 Tool responses follow a standard schema:
 \`\`\`typescript

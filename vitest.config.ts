@@ -8,5 +8,8 @@ export default defineConfig({
   test: {
     include: ['src/**/*.{test,spec}.?(c|m)[jt]s?(x)'],
     root: '.',
+    globals: true,
+    environment: 'node',
+    setupFiles: ['./src/testing/setup.ts'],
   },
 })
