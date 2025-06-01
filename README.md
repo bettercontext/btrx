@@ -16,7 +16,7 @@ Better Context is a developer tool that transforms how Large Language Models und
   <img src="app-screen.png" alt="Desktop UI" width="100%" height="auto">
 </div>
 
-https://github.com/user-attachments/assets/af5fb64f-e2ed-4f97-a0cc-3949281a14a9
+https://github.com/user-attachments/assets/cad20507-1a9b-4326-bf87-3e6c4dd634fe
 
 ## ⚠ Development Status
 
@@ -47,10 +47,10 @@ Better Context uses several configurable ports that can be adjusted in `src/conf
 
 ## Architecture Overview
 
-- MCP Server: Provides structured access to your codebase via the Model Context Protocol
-- SSE Transport: Real-time communication using Server-Sent Event
-- Desktop App: Cross-platform Tauri application with Vue.js
-- Database: Local PGlite database with Drizzle ORM
+- **MCP Server**: Provides structured access to your codebase via the Model Context Protocol
+- **SSE Transport**: Real-time communication using Server-Sent Events
+- **Desktop App**: Cross-platform Tauri application with Vue.js frontend
+- **Database**: Local PGlite database with Drizzle ORM
 
 ## Documentation
 

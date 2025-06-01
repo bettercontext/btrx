@@ -10,29 +10,46 @@ import * as schema from './schema'
 
 export * from './schema'
 
-const configSchema = {
-  dataDirectory: {
-    type: 'string',
-    default: path.join(os.homedir(), '.bettercontext'),
-  },
-} as const
+function createProductionDb() {
+  const configSchema = {
+    dataDirectory: {
+      type: 'string',
+      default: path.join(os.homedir(), '.bettercontext'),
+    },
+  } as const
 
-const config = new Conf({ schema: configSchema, projectName: 'bettercontext' })
+  const config = new Conf({
+    schema: configSchema,
+    projectName: 'bettercontext',
+  })
+  const dataDir = config.get('dataDirectory') as string
 
-const dataDir = config.get('dataDirectory') as string
-
-if (!fs.existsSync(dataDir)) {
-  try {
-    fs.mkdirSync(dataDir, { recursive: true })
-    console.log(`[DB Init] Created data directory: ${dataDir}`)
-  } catch (error) {
-    console.error(`[DB Init] Error creating data directory ${dataDir}:`, error)
+  if (!fs.existsSync(dataDir)) {
+    try {
+      fs.mkdirSync(dataDir, { recursive: true })
+      console.log(`[DB Init] Created data directory: ${dataDir}`)
+    } catch (error) {
+      console.error(
+        `[DB Init] Error creating data directory ${dataDir}:`,
+        error,
+      )
+    }
+  } else {
+    console.log(`[DB Init] Using existing data directory: ${dataDir}`)
   }
-} else {
-  console.log(`[DB Init] Using existing data directory: ${dataDir}`)
+
+  console.log(`[DB Init] Initializing PGlite with data directory: ${dataDir}`)
+  const client = new PGlite(dataDir)
+  return drizzle(client, { schema })
 }
 
-console.log(`[DB Init] Initializing PGlite with data directory: ${dataDir}`)
-const client = new PGlite(dataDir)
+async function createTestDb() {
+  const { createTestDb: createTestDatabase } = await import(
+    '../testing/helpers/testDb'
+  )
+  console.log('[DB Init] Using in-memory test database')
+  return createTestDatabase()
+}
 
-export const db = drizzle(client, { schema })
+export const db =
+  process.env.NODE_ENV === 'test' ? await createTestDb() : createProductionDb()

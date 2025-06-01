@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  readContextPrompt,
-  readPrompt,
-  type TemplateVariables,
-} from './promptReader'
+import { readContextPrompt, readPrompt } from './promptReader'
+import type { TemplateVariables } from './templateEngine'
 
 describe('promptReader', () => {
   describe('readPrompt', () => {

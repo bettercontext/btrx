@@ -1,11 +1,11 @@
 {
-  "id": "81250814-c4f4-40f4-a2b9-39388fcb57fc",
+  "id": "1e3efae0-e456-4b03-ad32-6d4404ac9db7",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.guidelines": {
-      "name": "guidelines",
+    "public.guidelines_content": {
+      "name": "guidelines_content",
       "schema": "",
       "columns": {
         "id": {
@@ -24,21 +24,29 @@
           "name": "content",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "''"
         },
-        "active": {
-          "name": "active",
-          "type": "boolean",
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "default": false
+          "default": 0
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
         }
       },
       "indexes": {},
       "foreignKeys": {
-        "guidelines_context_id_guidelines_contexts_id_fk": {
-          "name": "guidelines_context_id_guidelines_contexts_id_fk",
-          "tableFrom": "guidelines",
+        "guidelines_content_context_id_guidelines_contexts_id_fk": {
+          "name": "guidelines_content_context_id_guidelines_contexts_id_fk",
+          "tableFrom": "guidelines_content",
           "tableTo": "guidelines_contexts",
           "columnsFrom": [
             "context_id"

@@ -24,7 +24,6 @@ describe('useGuidelinesPresets', () => {
   }
 
   beforeEach(() => {
-    vi.clearAllMocks()
     vi.mocked(api.fetchApi).mockReset()
     mockToast.add.mockReset()
   })

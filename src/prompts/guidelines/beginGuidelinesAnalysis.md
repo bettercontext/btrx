@@ -1,26 +1,30 @@
-You are about to begin an analysis of the project's guidelines. This process will be done sequentially, focusing on different 'contexts' of the codebase. We will guide you through each context.
+You are about to begin an analysis of the project's guidelines. This repository has the following contexts available for analysis:
 
-Okay, we will now process the following guidelines contexts sequentially: {{allContextsList}}.
+{{#each contexts}}
+- **{{name}}** (ID: {{id}})
+{{/contexts}}
 
-Let's start with the first context: "{{firstContextName}}" (ID: {{firstContextId}}).
+**IMPORTANT: You must ask the user which contexts they want to analyze before proceeding.**
 
-Please perform the following steps for the context "{{firstContextName}}" (ID: {{firstContextId}}):
+Ask the user to select which contexts they would like to analyze. They can:
 
-1.  Call the MCP tool named 'getGuidelinesAnalysisPromptForContext' with the argument:
-    ```json
-    {
-      "contextId": {{firstContextId}}
-    }
-    ```
-2.  The tool will return a specific prompt for analyzing the "{{firstContextName}}" code. Use this prompt to have the AI generate a list of guidelines (as an array of strings).
-3.  Once the guidelines are generated, call the MCP tool named 'saveGuidelines' with the arguments:
-    ```json
-    {
-      "guidelines": <the_generated_array_of_guideline_strings>,
-      "contextId": {{firstContextId}}
-    }
-    ```
-4.  After successfully saving the guidelines for "{{firstContextName}}" (ID: {{firstContextId}}), if there are more contexts in the list ({{remainingContextsList}}), repeat this entire 4-step process for the next context in the list (using its specific ID and name).
-    If "{{firstContextName}}" (ID: {{firstContextId}}) was the last context, the process is complete.
+- Select specific contexts by name (e.g., "Frontend and Backend only")
+- Choose all contexts (e.g., "All contexts" or "Everything")
+- Pick just one context (e.g., "Just the Frontend context")
 
-Proceed now with step 1 for the context "{{firstContextName}}" (ID: {{firstContextId}}).
+**Do not make this selection yourself. Wait for the user's response, then translate their selection into the appropriate context IDs and start the analysis workflow:**
+
+**After the user selects contexts, process them sequentially:**
+
+1. **Call `guidelines_analysis`** with the full array of selected context IDs (e.g., `{"contextIds": [1, 2]}`)
+2. **The tool will return analysis instructions for the first context** - EXECUTE these instructions by:
+   - Using available tools (read_file, Grep, etc.) to examine the codebase
+   - Analyzing patterns, conventions, and practices as instructed
+   - Generating a comprehensive list of specific, actionable guidelines
+3. **Save the results** using `guidelines_save` with:
+   - The generated guidelines array
+   - The current contextId (first from the array)
+   - The remaining contextIds (rest of the array)
+4. **The system will automatically continue** with the next context until all are processed
+
+**Start immediately after context selection by calling guidelines_analysis with the contextIds array.**

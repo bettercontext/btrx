@@ -1,4 +1,4 @@
-import { boolean, integer, pgTable, serial, text } from 'drizzle-orm/pg-core'
+import { integer, pgTable, serial, text } from 'drizzle-orm/pg-core'
 
 export const repositories = pgTable('repositories', {
   id: serial('id').primaryKey(),
@@ -14,11 +14,12 @@ export const guidelinesContexts = pgTable('guidelines_contexts', {
   prompt: text('prompt').notNull(),
 })
 
-export const guidelines = pgTable('guidelines', {
+export const guidelinesContent = pgTable('guidelines_content', {
   id: serial('id').primaryKey(),
   contextId: integer('context_id')
     .references(() => guidelinesContexts.id, { onDelete: 'cascade' })
     .notNull(),
-  content: text('content').notNull(),
-  active: boolean('active').notNull().default(false),
+  content: text('content').notNull().default(''),
+  createdAt: integer('created_at').notNull().default(0),
+  updatedAt: integer('updated_at').notNull().default(0),
 })

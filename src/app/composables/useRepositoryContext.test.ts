@@ -53,7 +53,6 @@ describe('useRepositoryContext', () => {
   }
 
   beforeEach(() => {
-    vi.clearAllMocks()
     vi.mocked(api.fetchApi).mockReset()
     vi.useFakeTimers()
     onMountedCallback = null // Reset captured callback

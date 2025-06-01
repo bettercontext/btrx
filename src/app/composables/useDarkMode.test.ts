@@ -32,7 +32,6 @@ describe('useDarkMode', () => {
   beforeEach(() => {
     mockStorage = {}
     mockClassList.clear()
-    vi.clearAllMocks()
     // Reset isDarkMode state
     const { toggleDarkMode } = useDarkMode()
     toggleDarkMode(false)
