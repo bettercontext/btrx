@@ -6,9 +6,8 @@ import {
 import { z } from 'zod'
 
 import { mcpServer } from './server'
-import { handleGetGuidelinesAnalysisPromptForContext } from './toolHandlers/guidelines/guidelinesAnalysis'
-import { handleSaveGuidelines } from './toolHandlers/guidelines/saveGuidelines'
-import { handleStartGuidelinesAnalysisFlow } from './toolHandlers/guidelines/startGuidelinesAnalysisFlow'
+import './toolHandlers/guidelines'
+import { toolRegistry, validateToolsRegistry } from './toolRegistry'
 import { toolsList } from './tools'
 
 export function registerMcpHandlers() {
@@ -37,43 +36,26 @@ export function registerMcpHandlers() {
       const mcpContext = { CWD }
       console.log('[MCP Handlers] MCP Context with CWD:', mcpContext)
 
-      switch (toolName) {
-        case 'start_guidelines_analysis_flow': {
-          console.log(
-            'start_guidelines_analysis_flow tool called with args:',
-            request.params.arguments,
-          )
-          return handleStartGuidelinesAnalysisFlow(
-            request.params.arguments,
-            mcpContext,
-          )
-        }
-        case 'get_guidelines_analysis_prompt_for_context': {
-          console.log(
-            'get_guidelines_analysis_prompt_for_context tool called with args:',
-            request.params.arguments,
-          )
-          return handleGetGuidelinesAnalysisPromptForContext(
-            request.params.arguments,
-            mcpContext,
-          )
-        }
-        case 'save_guidelines': {
-          console.log(
-            'save_guidelines tool called with args:',
-            request.params.arguments,
-          )
-          return handleSaveGuidelines(request.params.arguments, mcpContext)
-        }
-        default:
-          console.error(`[MCP Handlers] Unknown tool: ${toolName}`)
-          throw new McpError(
-            ErrorCode.MethodNotFound,
-            `Unknown tool: ${toolName}`,
-          )
+      const handler = toolRegistry.get(toolName)
+      if (!handler) {
+        console.error(`[MCP Handlers] Unknown tool: ${toolName}`)
+        throw new McpError(
+          ErrorCode.MethodNotFound,
+          `Unknown tool: ${toolName}`,
+        )
       }
+
+      console.log(
+        `[MCP Handlers] Calling handler for tool: ${toolName}`,
+        request.params.arguments,
+      )
+      return handler(request.params.arguments, mcpContext)
     },
   )
 
   console.log('[MCP Handlers] Registered MCP request handlers.')
+
+  if (process.env.NODE_ENV !== 'production') {
+    validateToolsRegistry(toolsList)
+  }
 }

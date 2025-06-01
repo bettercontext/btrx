@@ -2,142 +2,123 @@ import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { db } from '@/db'
+import {
+  createTestContexts,
+  createTestRepositories,
+  TEST_REPOSITORY_DATA,
+} from '@/testing/helpers/fixtures'
+import { cleanTestDb } from '@/testing/helpers/testDb'
 
-import { handleGetGuidelinesAnalysisPromptForContext } from './guidelinesAnalysis'
+import { handleGuidelinesAnalysis } from './guidelinesAnalysis'
 
-vi.mock('@/db', () => ({
-  db: {
-    select: vi.fn(() => ({
-      from: vi.fn(() => ({
-        where: vi.fn(() => ({
-          limit: vi.fn(),
-        })),
-      })),
-    })),
-  },
+vi.mock('@/helpers/promptReader', () => ({
+  readPrompt: vi.fn(),
 }))
 
-describe('handleGetGuidelinesAnalysisPromptForContext', () => {
+vi.mock('@/services/repositoryService', () => ({
+  findOrCreateRepositoryByPath: vi.fn(),
+}))
+
+vi.mock('child_process', () => ({
+  exec: vi.fn(),
+}))
+
+describe('handleGuidelinesAnalysis', () => {
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>
+  let testContextId: number
 
-  const mockContextId = 101
-  const mockContextPrompt = 'This is a test prompt for context 101.'
-  const mockContextEntry = [
-    {
-      id: mockContextId,
-      name: 'Test Context',
-      prompt: mockContextPrompt,
-      repositoryId: 1,
-    },
-  ]
-
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.resetAllMocks()
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {
       // No-op to suppress console error during tests
     })
+
+    await cleanTestDb(db)
+
+    const repositories = await createTestRepositories(db, [
+      TEST_REPOSITORY_DATA.repo1,
+    ])
+    const contexts = await createTestContexts(db, repositories[0].id, [
+      'coding',
+    ])
+
+    testContextId = contexts[0].id
   })
 
   afterEach(() => {
     consoleErrorSpy.mockRestore()
   })
 
-  it('should return the correct prompt when contextId is valid', async () => {
-    const args = { contextId: mockContextId }
+  describe('with contextIds (specific context prompt)', () => {
+    it('should return the correct prompt when contextIds is valid', async () => {
+      const args = { contextIds: [testContextId] }
 
-    vi.mocked(db.select).mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          limit: vi.fn().mockResolvedValue(mockContextEntry),
-        }),
-      }),
-    } as any)
-
-    const result = await handleGetGuidelinesAnalysisPromptForContext(args, {
-      CWD: '/test/project',
-    })
-    expect(result).toEqual({
-      content: [{ type: 'text', text: mockContextPrompt }],
-    })
-  })
-
-  it('should throw McpError if context is not found for contextId', async () => {
-    const args = { contextId: mockContextId }
-
-    vi.mocked(db.select).mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          limit: vi.fn().mockResolvedValue([]), // No context found
-        }),
-      }),
-    } as any)
-
-    const error = await handleGetGuidelinesAnalysisPromptForContext(args, {
-      CWD: '/test/project',
-    }).catch((e) => e)
-
-    expect(error).toBeInstanceOf(McpError)
-    expect(error.code).toBe(ErrorCode.InvalidParams)
-    expect(error.message).toContain(
-      `Context with ID "${mockContextId}" not found`,
-    )
-  })
-
-  it('should throw McpError for invalid input (contextId not a number)', async () => {
-    const args = { contextId: 'not-a-number' }
-    await expect(
-      handleGetGuidelinesAnalysisPromptForContext(args, {
-        CWD: '/test/project',
-      }),
-    ).rejects.toThrow(McpError)
-    try {
-      await handleGetGuidelinesAnalysisPromptForContext(args, {
+      const result = await handleGuidelinesAnalysis(args, {
         CWD: '/test/project',
       })
-    } catch (e: any) {
-      expect(e.code).toBe(ErrorCode.InvalidParams)
-      expect(e.message).toContain('Expected number, received string')
-    }
-  })
+      expect(result).toEqual({
+        content: [
+          {
+            type: 'text',
+            text: 'Guidelines for coding standards and best practices',
+          },
+        ],
+      })
+    })
 
-  it('should throw McpError if contextId argument is missing', async () => {
-    const args = {}
-    await expect(
-      handleGetGuidelinesAnalysisPromptForContext(args, {
+    it('should throw McpError if context is not found for contextIds', async () => {
+      const nonExistentContextId = 99999
+      const args = { contextIds: [nonExistentContextId] }
+
+      const error = await handleGuidelinesAnalysis(args, {
         CWD: '/test/project',
-      }),
-    ).rejects.toThrow(McpError)
-  })
+      }).catch((e) => e)
 
-  it('should throw McpError for extra arguments due to .strict()', async () => {
-    const args = { contextId: mockContextId, extraParam: 'unexpected' }
-    await expect(
-      handleGetGuidelinesAnalysisPromptForContext(args, {
-        CWD: '/test/project',
-      }),
-    ).rejects.toThrow(McpError)
-  })
+      expect(error).toBeInstanceOf(McpError)
+      expect(error.code).toBe(ErrorCode.InvalidParams)
+      expect(error.message).toContain(
+        `Context with ID "${nonExistentContextId}" not found`,
+      )
+    })
 
-  it('should throw McpError if database query fails', async () => {
-    const args = { contextId: mockContextId }
-    const dbError = new Error('Database connection failed')
-
-    vi.mocked(db.select).mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          limit: vi.fn().mockRejectedValue(dbError),
+    it('should throw McpError for invalid input (contextIds not an array)', async () => {
+      const args = { contextIds: 'not-an-array' }
+      await expect(
+        handleGuidelinesAnalysis(args, {
+          CWD: '/test/project',
         }),
+      ).rejects.toThrow(McpError)
+      try {
+        await handleGuidelinesAnalysis(args, {
+          CWD: '/test/project',
+        })
+      } catch (e: any) {
+        expect(e.code).toBe(ErrorCode.InvalidParams)
+        expect(e.message).toContain('Expected array, received string')
+      }
+    })
+  })
+
+  describe('without contextIds (start analysis flow)', () => {
+    it('should throw McpError if CWD is not available', async () => {
+      const args = {}
+
+      const error = await handleGuidelinesAnalysis(args, {}).catch((e) => e)
+
+      expect(error).toBeInstanceOf(McpError)
+      expect(error.code).toBe(ErrorCode.InternalError)
+      expect(error.message).toContain(
+        'CWD not available in MCP context. Cannot determine repository.',
+      )
+    })
+  })
+
+  it('should throw McpError for completely invalid input structure', async () => {
+    const args = { contextIds: null }
+    await expect(
+      handleGuidelinesAnalysis(args, {
+        CWD: '/test/project',
       }),
-    } as any)
-
-    const error = await handleGetGuidelinesAnalysisPromptForContext(args, {
-      CWD: '/test/project',
-    }).catch((e) => e)
-
-    expect(error).toBeInstanceOf(McpError)
-    expect(error.code).toBe(ErrorCode.InternalError)
-    expect(error.message).toContain(
-      `Failed to read prompt for context ID ${mockContextId}`,
-    )
+    ).rejects.toThrow(McpError)
   })
 })

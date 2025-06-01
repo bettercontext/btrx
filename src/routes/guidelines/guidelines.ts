@@ -1,15 +1,19 @@
+import { eq } from 'drizzle-orm'
 import { type RequestHandler, Router } from 'express'
 
+import { db } from '@/db'
+import { guidelinesContexts } from '@/db/schema'
 import {
   bulkDeleteGuidelines,
   bulkUpdateGuidelinesState,
-  createGuideline as createGuidelineService,
+  createGuidelineByContextId,
   deleteGuideline as deleteGuidelineService,
   getGuidelinesForRepository,
   getGuidelinesForRepositoryById,
   updateGuidelineContent as updateGuidelineContentService,
   updateGuidelineState as updateGuidelineStateService,
 } from '@/services/guidelines'
+import { findOrCreateRepositoryByPath } from '@/services/repositoryService'
 
 const router = Router()
 
@@ -98,11 +102,35 @@ const createGuidelineHandler: RequestHandler = async (req, res) => {
   }
 
   try {
-    const newGuideline = await createGuidelineService(
+    let effectiveRepositoryId: number
+
+    if (repositoryId) {
+      effectiveRepositoryId = repositoryId
+    } else {
+      const repository = await findOrCreateRepositoryByPath(
+        path,
+        gitUrl || null,
+      )
+      effectiveRepositoryId = repository.id
+    }
+
+    const contexts = await db
+      .select()
+      .from(guidelinesContexts)
+      .where(eq(guidelinesContexts.repositoryId, effectiveRepositoryId))
+
+    const targetContext = contexts.find((c) => c.name === context)
+
+    if (!targetContext) {
+      res
+        .status(404)
+        .json({ error: `Context '${context}' not found for this repository.` })
+      return
+    }
+
+    const newGuideline = await createGuidelineByContextId(
       content,
-      context,
-      path || repositoryId.toString(),
-      gitUrl,
+      targetContext.id,
     )
     res.status(201).json(newGuideline)
   } catch (error) {

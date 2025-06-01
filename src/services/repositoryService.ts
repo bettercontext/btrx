@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 
 import { db } from '@/db'
-import { repositories } from '@/db/schema'
+import { guidelinesContexts, repositories } from '@/db/schema'
 
 export const findRepositoryByPath = async (
   currentPath: string,
@@ -150,21 +150,38 @@ export const updateRepository = async (
 }
 
 /**
- * Delete a repository.
+ * Delete a repository and all its associated data.
+ * This will cascade delete all guidelines_contexts and their related guidelines_content.
  * @param id Repository ID
  */
 export const deleteRepository = async (id: number): Promise<void> => {
   try {
-    const deleted = await db
-      .delete(repositories)
-      .where(eq(repositories.id, id))
-      .returning({ id: repositories.id })
+    await db.transaction(async (tx) => {
+      // First check if repository exists
+      const existingRepo = await tx
+        .select({ id: repositories.id })
+        .from(repositories)
+        .where(eq(repositories.id, id))
+        .limit(1)
 
-    if (deleted.length === 0) {
-      throw new Error('Repository not found.')
-    }
+      if (existingRepo.length === 0) {
+        throw new Error('Repository not found.')
+      }
+
+      // Delete all guidelines_contexts for this repository
+      // This will cascade delete all guidelines_content due to the FK constraint with onDelete: 'cascade'
+      await tx
+        .delete(guidelinesContexts)
+        .where(eq(guidelinesContexts.repositoryId, id))
+
+      // Then delete the repository itself
+      await tx.delete(repositories).where(eq(repositories.id, id))
+    })
   } catch (error) {
     console.error('Error deleting repository:', error)
+    if (error instanceof Error && error.message === 'Repository not found.') {
+      throw error
+    }
     throw new Error('Failed to delete repository.')
   }
 }

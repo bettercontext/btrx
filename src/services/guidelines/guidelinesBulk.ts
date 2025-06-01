@@ -1,9 +1,26 @@
-import { eq, inArray } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 
 import { db } from '@/db'
-import { guidelines, guidelinesContexts } from '@/db/schema'
+import { guidelinesContent, guidelinesContexts } from '@/db/schema'
 
+import {
+  parseGuidelinesText,
+  removeGuidelineFromText,
+  toggleGuidelineStateInText,
+} from './textParser'
 import type { Guideline } from './types'
+import { findGuidelineByVirtualId } from './virtualIds'
+
+async function updateGuidelinesContent(
+  contextId: number,
+  content: string,
+): Promise<void> {
+  const now = Math.floor(Date.now() / 1000)
+  await db
+    .update(guidelinesContent)
+    .set({ content, updatedAt: now })
+    .where(eq(guidelinesContent.contextId, contextId))
+}
 
 export const bulkUpdateGuidelinesState = async (
   ids: number[],
@@ -14,43 +31,74 @@ export const bulkUpdateGuidelinesState = async (
   }
 
   try {
-    // First get existing guidelines with context names
-    const existingGuidelines = await db
+    // Get all contexts with their content
+    const allContexts = await db
       .select({
-        id: guidelines.id,
-        content: guidelines.content,
-        active: guidelines.active,
-        contextId: guidelines.contextId,
-        contextName: guidelinesContexts.name,
+        id: guidelinesContexts.id,
+        name: guidelinesContexts.name,
+        content: guidelinesContent.content,
       })
-      .from(guidelines)
+      .from(guidelinesContexts)
       .leftJoin(
-        guidelinesContexts,
-        eq(guidelines.contextId, guidelinesContexts.id),
+        guidelinesContent,
+        eq(guidelinesContexts.id, guidelinesContent.contextId),
       )
-      .where(inArray(guidelines.id, ids))
 
-    if (existingGuidelines.length === 0) {
-      throw new Error('No guidelines found with the provided IDs.')
+    const updatedGuidelines: Guideline[] = []
+    const contextUpdates = new Map<number, string>()
+
+    // Process each ID and find the corresponding guideline
+    for (const id of ids) {
+      let found = false
+
+      for (const context of allContexts) {
+        const textContent = context.content || ''
+        const parsedGuidelines = parseGuidelinesText(textContent)
+        const guideline = findGuidelineByVirtualId(
+          parsedGuidelines,
+          context.id,
+          id,
+        )
+
+        if (guideline) {
+          // Update the guideline state in the text
+          let updatedContent = contextUpdates.get(context.id) || textContent
+          updatedContent = toggleGuidelineStateInText(
+            updatedContent,
+            guideline.content,
+            active,
+          )
+          contextUpdates.set(context.id, updatedContent)
+
+          updatedGuidelines.push({
+            id,
+            content: guideline.content,
+            active,
+            contextId: context.id,
+            contextName: context.name,
+          })
+
+          found = true
+          break
+        }
+      }
+
+      if (!found) {
+        throw new Error(`Guideline with ID ${id} not found.`)
+      }
     }
 
-    // Then update and merge with context names
-    const updatedResults = await db
-      .update(guidelines)
-      .set({ active })
-      .where(inArray(guidelines.id, ids))
-      .returning()
+    // Update all modified contexts
+    for (const [contextId, content] of contextUpdates) {
+      await updateGuidelinesContent(contextId, content)
+    }
 
-    // Map results ensuring all required fields are present
-    return updatedResults.map((result) => {
-      const existing = existingGuidelines.find((g) => g.id === result.id)
-      if (!existing || !existing.contextName) {
-        throw new Error(`Missing context data for guideline ${result.id}`)
-      }
-      return { ...result, contextName: existing.contextName }
-    })
+    return updatedGuidelines
   } catch (error) {
     console.error('Error updating guidelines state in bulk:', error)
+    if (error instanceof Error) {
+      throw error
+    }
     throw new Error('Failed to update guidelines state in bulk.')
   }
 }
@@ -63,42 +111,73 @@ export const bulkDeleteGuidelines = async (
   }
 
   try {
-    // First get existing guidelines with context names
-    const existingGuidelines = await db
+    // Get all contexts with their content
+    const allContexts = await db
       .select({
-        id: guidelines.id,
-        content: guidelines.content,
-        active: guidelines.active,
-        contextId: guidelines.contextId,
-        contextName: guidelinesContexts.name,
+        id: guidelinesContexts.id,
+        name: guidelinesContexts.name,
+        content: guidelinesContent.content,
       })
-      .from(guidelines)
+      .from(guidelinesContexts)
       .leftJoin(
-        guidelinesContexts,
-        eq(guidelines.contextId, guidelinesContexts.id),
+        guidelinesContent,
+        eq(guidelinesContexts.id, guidelinesContent.contextId),
       )
-      .where(inArray(guidelines.id, ids))
 
-    if (existingGuidelines.length === 0) {
-      throw new Error('No guidelines found with the provided IDs.')
+    const deletedGuidelines: Guideline[] = []
+    const contextUpdates = new Map<number, string>()
+
+    // Process each ID and find the corresponding guideline
+    for (const id of ids) {
+      let found = false
+
+      for (const context of allContexts) {
+        const textContent = context.content || ''
+        const parsedGuidelines = parseGuidelinesText(textContent)
+        const guideline = findGuidelineByVirtualId(
+          parsedGuidelines,
+          context.id,
+          id,
+        )
+
+        if (guideline) {
+          // Remove the guideline from the text
+          let updatedContent = contextUpdates.get(context.id) || textContent
+          updatedContent = removeGuidelineFromText(
+            updatedContent,
+            guideline.content,
+          )
+          contextUpdates.set(context.id, updatedContent)
+
+          deletedGuidelines.push({
+            id,
+            content: guideline.content,
+            active: guideline.active,
+            contextId: context.id,
+            contextName: context.name,
+          })
+
+          found = true
+          break
+        }
+      }
+
+      if (!found) {
+        throw new Error(`Guideline with ID ${id} not found.`)
+      }
     }
 
-    // Then delete and return with context names
-    const deletedResults = await db
-      .delete(guidelines)
-      .where(inArray(guidelines.id, ids))
-      .returning()
+    // Update all modified contexts
+    for (const [contextId, content] of contextUpdates) {
+      await updateGuidelinesContent(contextId, content)
+    }
 
-    // Map results ensuring all required fields are present
-    return deletedResults.map((result) => {
-      const existing = existingGuidelines.find((g) => g.id === result.id)
-      if (!existing || !existing.contextName) {
-        throw new Error(`Missing context data for guideline ${result.id}`)
-      }
-      return { ...result, contextName: existing.contextName }
-    })
+    return deletedGuidelines
   } catch (error) {
     console.error('Error deleting guidelines in bulk:', error)
+    if (error instanceof Error) {
+      throw error
+    }
     throw new Error('Failed to delete guidelines in bulk.')
   }
 }

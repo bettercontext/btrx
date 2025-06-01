@@ -34,7 +34,12 @@ The source code is organized as follows:
       - `guidelines/`: Guidelines analysis tools
   - `prompts/`: System prompts for AI interactions
     - `guidelines/`: Guidelines-specific prompts
-      - `contexts/`: Context-specific analysis prompts
+      - `contexts/`: Context-specific analysis prompts (Back.md, Front.md)
+      - `beginGuidelinesAnalysis.md`: Initial workflow prompt with context selection
+      - `noContextsFound.md`: Fallback when no contexts exist
+  - `helpers/`: Utility functions
+    - `templateEngine.ts`: Template rendering with variable substitution and loops
+    - `promptReader.ts`: Prompt file loading with template processing
   - `routes/`: API endpoints with hierarchical organization
     - `guidelines/`: Guidelines management routes (contexts, guidelines, presets)
     - `mcp/`: MCP-related routes (tools, client status)
@@ -51,17 +56,26 @@ The source code is organized as follows:
 
 ### Guidelines Analysis Tools
 
-- **`start_guidelines_analysis_flow`**
-  - Initiates guidelines analysis for repository contexts
-  - Manages the analysis workflow state
-- **`get_guidelines_analysis_prompt_for_context`**
-  - Generates context-specific analysis prompts
-  - Handles custom context parameters
-- **`save_guidelines`**
-  - Persists generated guidelines
-  - Associates guidelines with specific contexts
+- **`guidelines_analysis`**
+  - Unified tool for guidelines analysis workflow
+  - Without contextIds: initiates discovery phase, returns templated prompt with available contexts
+  - With contextIds array: processes first context, returns context-specific analysis instructions
+  - Uses template engine for dynamic prompt generation with context data
+- **`guidelines_save`**
+  - Saves batch of guidelines for a specific context ID
+  - Handles duplicate detection and validation
+  - Automatically continues workflow with remaining contexts
+  - Returns next steps or completion status
 
-Tool responses follow a standard schema:
+### Template System
+
+Prompts support templating with:
+
+- Variable substitution: `{{variable}}`
+- Array iteration: `{{#each array}}...{{/array}}`
+- Dynamic content generation based on repository state
+
+Tool responses follow standard MCP schema:
 \`\`\`typescript
 {
 content: [{
@@ -123,8 +137,9 @@ text: string
 - Install packages via npm, avoid manual package.json edits
 - Keep files under 200 lines
 - Follow TypeScript/ESLint/Prettier conventions
-- Use .js extension for TypeScript imports
+- Except for @modelcontextprotocol, don't use .js extension for TypeScript imports (no extension at all)
 - When you need to move a file, don't recreate it, use a command to move it
+- Naming, comments are in English
 
 ## Vue Components
 

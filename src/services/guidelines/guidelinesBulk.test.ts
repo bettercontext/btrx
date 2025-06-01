@@ -1,517 +1,248 @@
-import { inArray } from 'drizzle-orm'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { db } from '@/db'
 import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  type Mock,
-  vi,
-} from 'vitest'
+  createTestContexts,
+  createTestRepositories,
+  TEST_REPOSITORY_DATA,
+} from '@/testing/helpers/fixtures'
+import { cleanTestDb } from '@/testing/helpers/testDb'
 
-import * as dbIndex from '@/db'
-
+import {
+  createGuidelineByContextId,
+  getGuidelinesForRepositoryById,
+} from './guidelines'
 import {
   bulkDeleteGuidelines,
   bulkUpdateGuidelinesState,
 } from './guidelinesBulk'
 
-vi.mock('@/db', async () => {
-  const actualSchema = await vi.importActual('@/db/schema')
+vi.mock('@/services/repositoryService', () => ({
+  findOrCreateRepositoryByPath: vi.fn(),
+  findRepositoryByPath: vi.fn(),
+}))
 
-  const mockWhere = vi.fn()
-  const mockLeftJoin = vi.fn().mockReturnValue({ where: mockWhere })
-  const mockFrom = vi.fn().mockReturnValue({
-    leftJoin: mockLeftJoin,
-    where: mockWhere,
-  })
-  const mockSelect = vi.fn().mockReturnValue({ from: mockFrom })
+describe('guidelinesBulk service (with in-memory database)', () => {
+  let testRepositoryId: number
+  let testContextId: number
 
-  const mockUpdateReturning = vi.fn().mockResolvedValue([])
-  const mockUpdateWhere = vi
-    .fn()
-    .mockReturnValue({ returning: mockUpdateReturning })
-  const mockUpdateSet = vi.fn().mockReturnValue({ where: mockUpdateWhere })
-  const mockUpdate = vi.fn().mockReturnValue({ set: mockUpdateSet })
+  beforeEach(async () => {
+    await cleanTestDb(db)
 
-  const mockDeleteReturning = vi.fn().mockResolvedValue([])
-  const mockDeleteWhere = vi
-    .fn()
-    .mockReturnValue({ returning: mockDeleteReturning })
-  const mockDelete = vi.fn().mockReturnValue({ where: mockDeleteWhere })
+    const repositories = await createTestRepositories(db, [
+      TEST_REPOSITORY_DATA.repo1,
+    ])
+    const contexts = await createTestContexts(db, repositories[0].id, [
+      'coding',
+    ])
 
-  const mockedDbModule: any = {
-    db: {
-      select: mockSelect,
-      update: mockUpdate,
-      delete: mockDelete,
-    },
-    guidelines: actualSchema.guidelines,
-    guidelinesContexts: actualSchema.guidelinesContexts,
-    __mocks: {
-      mockSelect,
-      mockFrom,
-      mockLeftJoin,
-      mockWhere,
-      mockUpdate,
-      mockUpdateSet,
-      mockUpdateWhere,
-      mockUpdateReturning,
-      mockDelete,
-      mockDeleteWhere,
-      mockDeleteReturning,
-    },
-  }
-  return mockedDbModule
-})
+    testRepositoryId = repositories[0].id
+    testContextId = contexts[0].id
 
-describe('guidelinesBulk service', () => {
-  const mockGuidelineIds = [1, 2, 3]
-  const mockContextId = 1
-  const mockContextName = 'test-context'
+    const { findOrCreateRepositoryByPath, findRepositoryByPath } = await import(
+      '@/services/repositoryService'
+    )
 
-  let mockSelect: Mock
-  let mockFrom: Mock
-  let mockLeftJoin: Mock
-  let mockWhere: Mock
-  let mockUpdate: Mock
-  let mockUpdateSet: Mock
-  let mockUpdateWhere: Mock
-  let mockUpdateReturning: Mock
-  let mockDelete: Mock
-  let mockDeleteWhere: Mock
-  let mockDeleteReturning: Mock
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn>
-
-  beforeEach(() => {
-    vi.resetAllMocks()
-    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-    const mocks = (dbIndex as any).__mocks
-    mockSelect = mocks.mockSelect
-    mockFrom = mocks.mockFrom
-    mockLeftJoin = mocks.mockLeftJoin
-    mockWhere = mocks.mockWhere
-    mockUpdate = mocks.mockUpdate
-    mockUpdateSet = mocks.mockUpdateSet
-    mockUpdateWhere = mocks.mockUpdateWhere
-    mockUpdateReturning = mocks.mockUpdateReturning
-    mockDelete = mocks.mockDelete
-    mockDeleteWhere = mocks.mockDeleteWhere
-    mockDeleteReturning = mocks.mockDeleteReturning
-
-    // Reset mock implementations
-    mockSelect.mockReturnValue({ from: mockFrom })
-    mockFrom.mockReturnValue({
-      leftJoin: mockLeftJoin,
-      where: mockWhere,
+    vi.mocked(findOrCreateRepositoryByPath).mockResolvedValue({
+      id: testRepositoryId,
     })
-    mockLeftJoin.mockReturnValue({ where: mockWhere })
-    mockWhere.mockResolvedValue([])
-    mockUpdate.mockReturnValue({ set: mockUpdateSet })
-    mockUpdateSet.mockReturnValue({ where: mockUpdateWhere })
-    mockUpdateWhere.mockReturnValue({ returning: mockUpdateReturning })
-    mockUpdateReturning.mockResolvedValue([])
-    mockDelete.mockReturnValue({ where: mockDeleteWhere })
-    mockDeleteWhere.mockReturnValue({ returning: mockDeleteReturning })
-    mockDeleteReturning.mockResolvedValue([])
-  })
 
-  afterEach(() => {
-    consoleErrorSpy.mockRestore()
-    vi.restoreAllMocks()
+    vi.mocked(findRepositoryByPath).mockResolvedValue({
+      id: testRepositoryId,
+    })
   })
 
   describe('bulkUpdateGuidelinesState', () => {
-    const mockExistingGuidelines = [
-      {
-        id: 1,
-        content: 'Guideline 1',
-        active: false,
-        contextId: mockContextId,
-        contextName: mockContextName,
-      },
-      {
-        id: 2,
-        content: 'Guideline 2',
-        active: false,
-        contextId: mockContextId,
-        contextName: mockContextName,
-      },
-    ]
+    it('should update multiple guidelines state in text', async () => {
+      // Create multiple guidelines
+      const guideline1 = await createGuidelineByContextId(
+        'First guideline',
+        testContextId,
+      )
 
-    const mockUpdatedResults = [
-      {
-        id: 1,
-        content: 'Guideline 1',
+      const guideline2 = await createGuidelineByContextId(
+        'Second guideline',
+        testContextId,
+      )
+
+      // Activate both guidelines
+      const updated = await bulkUpdateGuidelinesState(
+        [guideline1.id, guideline2.id],
+        true,
+      )
+
+      expect(updated).toHaveLength(2)
+      expect(updated[0]).toMatchObject({
+        content: 'First guideline',
         active: true,
-        contextId: mockContextId,
-      },
-      {
-        id: 2,
-        content: 'Guideline 2',
-        active: true,
-        contextId: mockContextId,
-      },
-    ]
-
-    it('should update guidelines state successfully', async () => {
-      mockWhere.mockResolvedValueOnce(mockExistingGuidelines)
-      mockUpdateReturning.mockResolvedValueOnce(mockUpdatedResults)
-
-      const result = await bulkUpdateGuidelinesState([1, 2], true)
-
-      expect(mockSelect).toHaveBeenCalledWith({
-        id: dbIndex.guidelines.id,
-        content: dbIndex.guidelines.content,
-        active: dbIndex.guidelines.active,
-        contextId: dbIndex.guidelines.contextId,
-        contextName: dbIndex.guidelinesContexts.name,
+        contextName: 'coding-standards',
       })
-      expect(mockFrom).toHaveBeenCalledWith(dbIndex.guidelines)
-      expect(mockLeftJoin).toHaveBeenCalledWith(
-        dbIndex.guidelinesContexts,
-        expect.any(Object),
-      )
-      expect(mockWhere).toHaveBeenCalledWith(
-        inArray(dbIndex.guidelines.id, [1, 2]),
-      )
+      expect(updated[1]).toMatchObject({
+        content: 'Second guideline',
+        active: true,
+        contextName: 'coding-standards',
+      })
 
-      expect(mockUpdate).toHaveBeenCalledWith(dbIndex.guidelines)
-      expect(mockUpdateSet).toHaveBeenCalledWith({ active: true })
-      expect(mockUpdateWhere).toHaveBeenCalledWith(
-        inArray(dbIndex.guidelines.id, [1, 2]),
-      )
+      // Verify in database - both should be active (no "// " prefix)
+      const { guidelinesContent } = await import('@/db/schema')
+      const { eq } = await import('drizzle-orm')
 
-      expect(result).toEqual([
-        {
-          id: 1,
-          content: 'Guideline 1',
-          active: true,
-          contextId: mockContextId,
-          contextName: mockContextName,
-        },
-        {
-          id: 2,
-          content: 'Guideline 2',
-          active: true,
-          contextId: mockContextId,
-          contextName: mockContextName,
-        },
-      ])
-    })
+      const contentRows = await db
+        .select()
+        .from(guidelinesContent)
+        .where(eq(guidelinesContent.contextId, testContextId))
 
-    it('should throw error when ids array is empty', async () => {
-      await expect(bulkUpdateGuidelinesState([], true)).rejects.toThrow(
-        'At least one guideline ID is required.',
-      )
-    })
-
-    it('should throw error when ids is not an array', async () => {
-      await expect(
-        bulkUpdateGuidelinesState(null as any, true),
-      ).rejects.toThrow('At least one guideline ID is required.')
-
-      await expect(
-        bulkUpdateGuidelinesState(undefined as any, true),
-      ).rejects.toThrow('At least one guideline ID is required.')
-
-      await expect(
-        bulkUpdateGuidelinesState('not-array' as any, true),
-      ).rejects.toThrow('At least one guideline ID is required.')
+      expect(contentRows[0].content).toBe('First guideline\nSecond guideline')
     })
 
     it('should throw error when no guidelines found', async () => {
-      mockWhere.mockResolvedValueOnce([])
-
-      await expect(
-        bulkUpdateGuidelinesState(mockGuidelineIds, true),
-      ).rejects.toThrow('Failed to update guidelines state in bulk.')
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Error updating guidelines state in bulk:',
-        expect.objectContaining({
-          message: 'No guidelines found with the provided IDs.',
-        }),
+      await expect(bulkUpdateGuidelinesState([999999], true)).rejects.toThrow(
+        'Guideline with ID 999999 not found.',
       )
     })
 
-    it('should throw error when guideline has missing context data', async () => {
-      const incompleteGuidelines = [
-        {
-          id: 1,
-          content: 'Guideline 1',
-          active: false,
-          contextId: mockContextId,
-          contextName: null,
-        },
-      ]
-      const updatedResults = [
-        {
-          id: 1,
-          content: 'Guideline 1',
-          active: true,
-          contextId: mockContextId,
-        },
-      ]
-
-      mockWhere.mockResolvedValueOnce(incompleteGuidelines)
-      mockUpdateReturning.mockResolvedValueOnce(updatedResults)
-
-      await expect(bulkUpdateGuidelinesState([1], true)).rejects.toThrow(
-        'Failed to update guidelines state in bulk.',
-      )
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Error updating guidelines state in bulk:',
-        expect.objectContaining({
-          message: 'Missing context data for guideline 1',
-        }),
-      )
-    })
-
-    it('should throw error when updated guideline not found in existing data', async () => {
-      const existingGuidelines = [
-        {
-          id: 1,
-          content: 'Guideline 1',
-          active: false,
-          contextId: mockContextId,
-          contextName: mockContextName,
-        },
-      ]
-      const updatedResults = [
-        {
-          id: 2, // Different ID
-          content: 'Guideline 2',
-          active: true,
-          contextId: mockContextId,
-        },
-      ]
-
-      mockWhere.mockResolvedValueOnce(existingGuidelines)
-      mockUpdateReturning.mockResolvedValueOnce(updatedResults)
-
-      await expect(bulkUpdateGuidelinesState([1], true)).rejects.toThrow(
-        'Failed to update guidelines state in bulk.',
-      )
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Error updating guidelines state in bulk:',
-        expect.objectContaining({
-          message: 'Missing context data for guideline 2',
-        }),
-      )
-    })
-
-    it('should handle database errors', async () => {
-      const dbError = new Error('Database connection failed')
-      mockWhere.mockRejectedValueOnce(dbError)
-
-      await expect(
-        bulkUpdateGuidelinesState(mockGuidelineIds, true),
-      ).rejects.toThrow('Failed to update guidelines state in bulk.')
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Error updating guidelines state in bulk:',
-        dbError,
+    it('should throw error when IDs array is empty', async () => {
+      await expect(bulkUpdateGuidelinesState([], true)).rejects.toThrow(
+        'At least one guideline ID is required.',
       )
     })
   })
 
   describe('bulkDeleteGuidelines', () => {
-    const mockExistingGuidelines = [
-      {
-        id: 1,
-        content: 'Guideline 1',
-        active: true,
-        contextId: mockContextId,
-        contextName: mockContextName,
-      },
-      {
-        id: 2,
-        content: 'Guideline 2',
-        active: false,
-        contextId: mockContextId,
-        contextName: mockContextName,
-      },
-    ]
+    it('should delete multiple guidelines from text', async () => {
+      // Create multiple guidelines
+      const guideline1 = await createGuidelineByContextId(
+        'To delete 1',
+        testContextId,
+      )
 
-    const mockDeletedResults = [
-      {
-        id: 1,
-        content: 'Guideline 1',
-        active: true,
-        contextId: mockContextId,
-      },
-      {
-        id: 2,
-        content: 'Guideline 2',
-        active: false,
-        contextId: mockContextId,
-      },
-    ]
+      const guideline2 = await createGuidelineByContextId(
+        'To delete 2',
+        testContextId,
+      )
 
-    it('should delete guidelines successfully', async () => {
-      mockWhere.mockResolvedValueOnce(mockExistingGuidelines)
-      mockDeleteReturning.mockResolvedValueOnce(mockDeletedResults)
+      const guideline3 = await createGuidelineByContextId(
+        'To keep',
+        testContextId,
+      )
 
-      const result = await bulkDeleteGuidelines([1, 2])
+      // Delete first two guidelines
+      const deleted = await bulkDeleteGuidelines([guideline1.id, guideline2.id])
 
-      expect(mockSelect).toHaveBeenCalledWith({
-        id: dbIndex.guidelines.id,
-        content: dbIndex.guidelines.content,
-        active: dbIndex.guidelines.active,
-        contextId: dbIndex.guidelines.contextId,
-        contextName: dbIndex.guidelinesContexts.name,
+      expect(deleted).toHaveLength(2)
+      expect(deleted[0]).toMatchObject({
+        content: 'To delete 1',
+        contextName: 'coding-standards',
       })
-      expect(mockFrom).toHaveBeenCalledWith(dbIndex.guidelines)
-      expect(mockLeftJoin).toHaveBeenCalledWith(
-        dbIndex.guidelinesContexts,
-        expect.any(Object),
-      )
-      expect(mockWhere).toHaveBeenCalledWith(
-        inArray(dbIndex.guidelines.id, [1, 2]),
-      )
+      expect(deleted[1]).toMatchObject({
+        content: 'To delete 2',
+        contextName: 'coding-standards',
+      })
 
-      expect(mockDelete).toHaveBeenCalledWith(dbIndex.guidelines)
-      expect(mockDeleteWhere).toHaveBeenCalledWith(
-        inArray(dbIndex.guidelines.id, [1, 2]),
-      )
+      // Verify in database - only the third guideline should remain
+      const { guidelinesContent } = await import('@/db/schema')
+      const { eq } = await import('drizzle-orm')
 
-      expect(result).toEqual([
-        {
-          id: 1,
-          content: 'Guideline 1',
-          active: true,
-          contextId: mockContextId,
-          contextName: mockContextName,
-        },
-        {
-          id: 2,
-          content: 'Guideline 2',
-          active: false,
-          contextId: mockContextId,
-          contextName: mockContextName,
-        },
-      ])
+      const contentRows = await db
+        .select()
+        .from(guidelinesContent)
+        .where(eq(guidelinesContent.contextId, testContextId))
+
+      expect(contentRows[0].content).toBe('// To keep')
+
+      // Also verify that guideline3 still exists and can be retrieved
+      const remainingGuidelines =
+        await getGuidelinesForRepositoryById(testRepositoryId)
+      expect(remainingGuidelines).toHaveLength(1)
+      expect(remainingGuidelines[0]).toMatchObject({
+        content: 'To keep',
+        active: false,
+        contextName: 'coding-standards',
+      })
+      // Note: ID should remain the same because virtual IDs are based on content,
+      // not line positions
+      expect(remainingGuidelines[0].id).toBe(guideline3.id)
+      expect(remainingGuidelines[0].id).toBeTypeOf('number')
     })
 
-    it('should throw error when ids array is empty', async () => {
+    it('should throw error when no guidelines found', async () => {
+      await expect(bulkDeleteGuidelines([999999])).rejects.toThrow(
+        'Guideline with ID 999999 not found.',
+      )
+    })
+
+    it('should throw error when IDs array is empty', async () => {
       await expect(bulkDeleteGuidelines([])).rejects.toThrow(
         'At least one guideline ID is required.',
       )
     })
+  })
 
-    it('should throw error when ids is not an array', async () => {
-      await expect(bulkDeleteGuidelines(null as any)).rejects.toThrow(
-        'At least one guideline ID is required.',
+  describe('cross-context operations', () => {
+    it('should handle guidelines from different contexts', async () => {
+      const { guidelinesContexts } = await import('@/db/schema')
+
+      // Create second context
+      const [context2] = await db
+        .insert(guidelinesContexts)
+        .values({
+          repositoryId: testRepositoryId,
+          name: 'second-context',
+          prompt: 'Second prompt',
+        })
+        .returning()
+
+      // Mock for second context
+      const { findOrCreateRepositoryByPath } = await import(
+        '@/services/repositoryService'
       )
-
-      await expect(bulkDeleteGuidelines(undefined as any)).rejects.toThrow(
-        'At least one guideline ID is required.',
-      )
-
-      await expect(bulkDeleteGuidelines('not-array' as any)).rejects.toThrow(
-        'At least one guideline ID is required.',
-      )
-    })
-
-    it('should throw error when no guidelines found', async () => {
-      mockWhere.mockResolvedValueOnce([])
-
-      await expect(bulkDeleteGuidelines(mockGuidelineIds)).rejects.toThrow(
-        'Failed to delete guidelines in bulk.',
-      )
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Error deleting guidelines in bulk:',
-        expect.objectContaining({
-          message: 'No guidelines found with the provided IDs.',
-        }),
-      )
-    })
-
-    it('should throw error when guideline has missing context data', async () => {
-      const incompleteGuidelines = [
-        {
-          id: 1,
-          content: 'Guideline 1',
-          active: true,
-          contextId: mockContextId,
-          contextName: null,
+      vi.mocked(findOrCreateRepositoryByPath).mockImplementation(
+        (_path, _origin) => {
+          return Promise.resolve({ id: testRepositoryId })
         },
-      ]
-      const deletedResults = [
-        {
-          id: 1,
-          content: 'Guideline 1',
-          active: true,
-          contextId: mockContextId,
-        },
-      ]
-
-      mockWhere.mockResolvedValueOnce(incompleteGuidelines)
-      mockDeleteReturning.mockResolvedValueOnce(deletedResults)
-
-      await expect(bulkDeleteGuidelines([1])).rejects.toThrow(
-        'Failed to delete guidelines in bulk.',
       )
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Error deleting guidelines in bulk:',
-        expect.objectContaining({
-          message: 'Missing context data for guideline 1',
-        }),
-      )
-    })
-
-    it('should throw error when deleted guideline not found in existing data', async () => {
-      const existingGuidelines = [
-        {
-          id: 1,
-          content: 'Guideline 1',
-          active: true,
-          contextId: mockContextId,
-          contextName: mockContextName,
-        },
-      ]
-      const deletedResults = [
-        {
-          id: 2, // Different ID
-          content: 'Guideline 2',
-          active: true,
-          contextId: mockContextId,
-        },
-      ]
-
-      mockWhere.mockResolvedValueOnce(existingGuidelines)
-      mockDeleteReturning.mockResolvedValueOnce(deletedResults)
-
-      await expect(bulkDeleteGuidelines([1])).rejects.toThrow(
-        'Failed to delete guidelines in bulk.',
+      // Create guidelines in both contexts
+      const guideline1 = await createGuidelineByContextId(
+        'Context 1 guideline',
+        testContextId,
       )
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Error deleting guidelines in bulk:',
-        expect.objectContaining({
-          message: 'Missing context data for guideline 2',
-        }),
-      )
-    })
-
-    it('should handle database errors', async () => {
-      const dbError = new Error('Database connection failed')
-      mockWhere.mockRejectedValueOnce(dbError)
-
-      await expect(bulkDeleteGuidelines(mockGuidelineIds)).rejects.toThrow(
-        'Failed to delete guidelines in bulk.',
+      const guideline2 = await createGuidelineByContextId(
+        'Context 2 guideline',
+        context2.id,
       )
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Error deleting guidelines in bulk:',
-        dbError,
+      // Update both
+      const updated = await bulkUpdateGuidelinesState(
+        [guideline1.id, guideline2.id],
+        true,
       )
+
+      expect(updated).toHaveLength(2)
+      expect(
+        updated.find((g) => g.contextName === 'coding-standards'),
+      ).toBeTruthy()
+      expect(
+        updated.find((g) => g.contextName === 'second-context'),
+      ).toBeTruthy()
+
+      // Verify both contexts were updated
+      const { guidelinesContent } = await import('@/db/schema')
+      const { eq } = await import('drizzle-orm')
+
+      const content1 = await db
+        .select()
+        .from(guidelinesContent)
+        .where(eq(guidelinesContent.contextId, testContextId))
+
+      const content2 = await db
+        .select()
+        .from(guidelinesContent)
+        .where(eq(guidelinesContent.contextId, context2.id))
+
+      expect(content1[0].content).toBe('Context 1 guideline')
+      expect(content2[0].content).toBe('Context 2 guideline')
     })
   })
 })

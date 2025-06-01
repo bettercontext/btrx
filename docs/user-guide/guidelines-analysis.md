@@ -9,46 +9,47 @@ It combines repository analysis, AI processing, and structured guidelines genera
 Make sure you have at least one context set up for the current project and Better Context is running. Prompt the following:
 
 ```
-Using better context, run the coding guidelines analysis for this project.
+Using better context MCP, run the tool guidelines_analysis to initiate the coding guidelines analysis workflow for this project.
 ```
 
 ## Workflow Architecture
 
 ```mermaid
 graph TD
-    A[User/AI Initiates Analysis] --> B[MCP Tool: start_guidelines_analysis_flow]
-    B --> C[Repository Validation]
+    A[User/AI Initiates Analysis] --> B[MCP Tool: guidelines_analysis without contextIds]
+    B --> C[Repository Detection & Validation]
     C --> D[Load All Contexts for Repository]
-    D --> E[Create Context Queue]
-    E --> F[Return Initial Prompt with First Context]
-    F --> G[Context Processing Loop]
+    D --> E{Contexts Found?}
+    E -->|No| F[Return noContextsFound prompt]
+    E -->|Yes| G[Generate Templated Prompt with Context List]
+    G --> H[User Selects Contexts to Analyze]
+    H --> I[AI calls guidelines_analysis with contextIds array]
 
-    G --> H[MCP Tool: get_guidelines_analysis_prompt_for_context]
-    H --> I[File System Scanning for Context]
-    I --> J[Code Pattern Analysis]
-    J --> K[AI Generates Guidelines]
-    K --> L[MCP Tool: save_guidelines]
-    L --> M[Database Storage]
-    M --> N{More Contexts?}
+    I --> J[Process First Context from Array]
+    J --> K[Return Context-Specific Analysis Instructions]
+    K --> L[AI Scans Files & Analyzes Patterns]
+    L --> M[AI Generates Guidelines]
+    M --> N[MCP Tool: guidelines_save]
+    N --> O[Store Guidelines in Database]
+    O --> P{More Contexts in Array?}
 
-    N -->|Yes| O[Continue with Next Context]
-    O --> P[Generate Continue Prompt]
-    P --> G
+    P -->|Yes| Q[Return Continue Prompt with Remaining contextIds]
+    Q --> R[AI calls guidelines_analysis with remaining contextIds]
+    R --> J
 
-    N -->|No| Q[Analysis Complete]
+    P -->|No| S[Analysis Complete]
 
-    S[SSE Events] --> T[Real-time Progress Updates]
-    I --> S
-    J --> S
-    K --> S
-    M --> S
+    T[SSE Events] --> U[Real-time Progress Updates]
+    C --> T
+    L --> T
+    O --> T
 ```
 
 ## Workflow Steps
 
 ### 1. Analysis Initiation
 
-The workflow begins when an AI assistant calls the `start_guidelines_analysis_flow` MCP tool:
+The workflow begins when an AI assistant calls the `guidelines_analysis` MCP tool without a contextId:
 
 - **Repository Detection**: Identifies the current repository using Git origin URL or working directory path
 - **Context Loading**: Retrieves all defined guidelines contexts for the repository
@@ -63,7 +64,7 @@ The workflow processes each context sequentially through a loop mechanism:
 
 1. **Context Analysis Setup**
 
-   - AI calls `get_guidelines_analysis_prompt_for_context` with the current context ID
+   - AI calls `guidelines_analysis` with the current context ID
    - Tool returns context-specific analysis instructions and file patterns
 
 2. **Repository Analysis**
@@ -78,7 +79,7 @@ The workflow processes each context sequentially through a loop mechanism:
    - Guidelines are tailored to the specific context (testing, architecture, etc.)
 
 4. **Guidelines Storage**
-   - AI calls `save_guidelines` with generated guidelines and context ID
+   - AI calls `guidelines_save` with generated guidelines and context ID
    - Guidelines are stored in the database and associated with the context
 
 #### Loop Continuation:
@@ -116,9 +117,10 @@ The loop-based architecture ensures:
 
 ### Prompt-Driven Workflow
 
-The system uses intelligent prompting:
+The system uses intelligent prompting with templating:
 
-- **Dynamic Instructions**: Each prompt is tailored to the current context and remaining queue
+- **Dynamic Instructions**: Each prompt is tailored to the current context and remaining queue using template variables
+- **Template Engine**: Supports variable substitution (`{{variable}}`) and array iteration (`{{#each array}}`) for dynamic content generation
 - **Self-Managing**: AI assistants follow structured instructions to complete the entire workflow
 - **Flexible Continuation**: Supports interruption and resumption of analysis
 

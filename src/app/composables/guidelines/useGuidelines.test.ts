@@ -20,7 +20,6 @@ describe('useGuidelines', () => {
   }
 
   beforeEach(() => {
-    vi.clearAllMocks()
     vi.mocked(api.fetchApi).mockReset()
   })
 

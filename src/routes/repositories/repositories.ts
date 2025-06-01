@@ -89,15 +89,19 @@ const deleteRepositoryHandler: RequestHandler = async (req, res) => {
   }
 
   try {
+    console.log(`Attempting to delete repository with ID: ${id}`)
     await deleteRepository(Number(id))
+    console.log(`Successfully deleted repository with ID: ${id}`)
     res.status(204).send()
   } catch (error: any) {
-    console.error('Error deleting repository:', error)
+    console.error(`Error deleting repository ${id}:`, error)
     if (!res.headersSent) {
       if (error.message.includes('Repository not found')) {
         res.status(404).json({ error: error.message })
       } else {
-        res.status(500).json({ error: 'Failed to delete repository.' })
+        res
+          .status(500)
+          .json({ error: `Failed to delete repository: ${error.message}` })
       }
     }
   }

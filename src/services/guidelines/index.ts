@@ -2,7 +2,7 @@ export type { Guideline, GuidelinesContext } from './types'
 export {
   getGuidelinesForRepository,
   getGuidelinesForRepositoryById,
-  createGuideline,
+  createGuidelineByContextId,
   updateGuidelineState,
   updateGuidelineContent,
   deleteGuideline,
