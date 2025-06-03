@@ -45,16 +45,21 @@ describe('promptReader', () => {
 
   describe('readContextPrompt', () => {
     it('should read and process front context file', async () => {
-      const result = await readContextPrompt('front')
+      const result = await readContextPrompt('Front')
       expect(result).toBeTruthy() // Just verify it can read the file
     })
 
     it('should handle template variables in context content', async () => {
-      const result = await readContextPrompt('front', {
+      const result = await readContextPrompt('Front', {
         name: 'test',
         value: 'example',
       })
       expect(typeof result).toBe('string')
+    })
+
+    it('should read and process back context file', async () => {
+      const result = await readContextPrompt('Back')
+      expect(result).toBeTruthy()
     })
 
     it('should throw an error for invalid context files', async () => {
