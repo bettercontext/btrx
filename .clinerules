@@ -2,7 +2,7 @@
 
 This project is the **desktop and web application** `Better Context`. It combines:
 
-- A TypeScript-based MCP (Model Context Protocol) server with SSE (Server-Sent Events) transport
+- A TypeScript-based MCP (Model Context Protocol) server with HTTP streamable transport
 - A Vue.js web interface
 - A Tauri-based desktop application
 
@@ -46,7 +46,7 @@ The source code is organized as follows:
     - `repositories/`: Repository routes (git info, repositories)
     - `system/`: System routes (health, info)
   - `services/`: Business logic services
-  - `sse/`: Server-Sent Events handling
+  - `http/`: HTTP streamable transport handling
 - `src-tauri/`: Desktop application (Rust)
   - `src/`: Rust application code
   - `capabilities/`: Tauri capabilities configuration
@@ -92,7 +92,7 @@ text: string
 - Context-based analysis
 - Preset management
 - Repository-specific configurations
-- Real-time updates via SSE
+- Real-time updates via HTTP streaming
 
 ## Desktop Integration
 
@@ -113,7 +113,7 @@ text: string
 
 ## Backend
 
-- Express with SSE transport
+- Express with HTTP streamable transport
 - PGlite with Drizzle ORM
 - Tauri for desktop features
 - MCP SDK integration
@@ -168,10 +168,10 @@ text: string
 - Only comment to explain why when necessary
 - Keep comments exceptional and meaningful
 
-## SSE Implementation
+## HTTP Transport Implementation
 
 - Manage connections/disconnections properly
 - Clean up resources
-- Validate SSE data
+- Validate HTTP streaming data
 - Handle connection errors
 - Implement proper backoff strategies

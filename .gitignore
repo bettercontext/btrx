@@ -5,4 +5,4 @@ dist
 pgdata
 docs/.vuepress/.cache
 docs/.vuepress/.temp
-PLAN.md
+PLAN_*.md

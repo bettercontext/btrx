@@ -39,7 +39,7 @@ graph TD
 
     P -->|No| S[Analysis Complete]
 
-    T[SSE Events] --> U[Real-time Progress Updates]
+    T[HTTP Streaming Events] --> U[Real-time Progress Updates]
     C --> T
     L --> T
     O --> T
@@ -93,7 +93,7 @@ The workflow processes each context sequentially through a loop mechanism:
 
 Throughout the loop process:
 
-- **SSE Events**: Server-Sent Events provide real-time progress updates
+- **HTTP Streaming Events**: HTTP streaming provides real-time progress updates
 - **Web Interface**: Updates reflect current analysis status and completed contexts
 - **Progress Tracking**: Users can monitor which contexts have been processed
 

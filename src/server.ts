@@ -3,18 +3,11 @@ import express from 'express'
 import path, { dirname } from 'path'
 import { fileURLToPath } from 'url'
 
-import {
-  API_BASE_URL,
-  API_PORT,
-  MCP_BASE_URL,
-  MCP_PORT,
-  WEB_BASE_URL,
-  WEB_PORT,
-} from './config'
+import { API_BASE_URL, API_PORT, WEB_BASE_URL, WEB_PORT } from './config'
+import { handleHttpStreamRequest } from './http/transport'
 import { registerMcpHandlers } from './mcp/handlers'
 import apiRouter from './routes/api'
 import { handleHealthCheck } from './routes/system/health'
-import { handlePostMessage, handleSseConnection } from './sse/transport'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -86,6 +79,10 @@ const __dirname = dirname(__filename)
 
   apiApp.use('/api', apiRouter)
 
+  apiApp.all('/mcp', (req, res, next) => {
+    handleHttpStreamRequest(req, res).catch(next)
+  })
+
   apiApp.use(
     (
       err: Error,
@@ -103,37 +100,6 @@ const __dirname = dirname(__filename)
   apiApp.listen(API_PORT, () => {
     console.log(`[API Server] Server running on port ${API_PORT}`)
     console.log(`[API Server] API base URL: ${API_BASE_URL}/api`)
-  })
-
-  // MCP/SSE Server
-  const mcpApp = express()
-  mcpApp.use(cors())
-
-  mcpApp.get('/sse', (req, res, next) => {
-    handleSseConnection(req, res).catch(next)
-  })
-
-  mcpApp.post('/message', (req, res, next) => {
-    handlePostMessage(req, res).catch(next)
-  })
-
-  mcpApp.use(
-    (
-      err: Error,
-      _req: express.Request,
-      res: express.Response,
-      _next: express.NextFunction,
-    ) => {
-      console.error('[MCP/SSE App Error Handler]', err)
-      if (!res.headersSent) {
-        res.status(500).send('MCP/SSE Server Error')
-      }
-    },
-  )
-
-  mcpApp.listen(MCP_PORT, () => {
-    console.log(`[MCP/SSE Server] Server running on port ${MCP_PORT}`)
-    console.log(`[MCP/SSE Server] SSE endpoint: ${MCP_BASE_URL}/sse`)
-    console.log(`[MCP/SSE Server] Message endpoint: ${MCP_BASE_URL}/message`)
+    console.log(`[API Server] MCP endpoint: ${API_BASE_URL}/mcp`)
   })
 })()

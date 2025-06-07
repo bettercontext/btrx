@@ -92,7 +92,7 @@ npm ERR! ERESOLVE unable to resolve dependency tree
 
    ```bash
    lsof -i :3001
-   lsof -i :3002
+   lsof -i :3000
    ```
 
 2. **Kill the process**:
@@ -105,8 +105,8 @@ npm ERR! ERESOLVE unable to resolve dependency tree
 
    ```bash
    # Modify src/config.ts
-   export const API_PORT = 3011  // Changed from 3001
-   export const MCP_PORT = 3012  // Changed from 3002
+   export const API_PORT = 3011  // API server and MCP transport
+   export const WEB_PORT = 3010  // Web interface
    ```
 
 4. **Check for other Better Context instances**:
@@ -169,13 +169,15 @@ npm ERR! ERESOLVE unable to resolve dependency tree
 
 **Diagnostic Steps**:
 
-1. **Test MCP server SSE endpoint**:
+1. **Test MCP server HTTP endpoint**:
 
    ```bash
-   curl http://localhost:3002/sse
+   curl -X POST http://localhost:3001/mcp \
+     -H "Content-Type: application/json" \
+     -d '{"jsonrpc": "2.0", "method": "ping", "id": 1}'
    ```
 
-   This should return a streaming response or connection.
+   This should return a JSON response confirming the MCP server is running.
 
 2. **Test API server health**:
 
@@ -186,7 +188,7 @@ npm ERR! ERESOLVE unable to resolve dependency tree
    This should return your current working directory.
 
 3. **Verify AI client configuration**:
-   Check your AI client's MCP server configuration to ensure it's pointing to the correct Better Context server endpoints.
+   Check your AI client's MCP server configuration to ensure it's pointing to the correct Better Context server endpoint at `http://localhost:3001/mcp` with transport type `streamableHttp`.
 
 **Solutions**:
 
@@ -198,8 +200,22 @@ npm ERR! ERESOLVE unable to resolve dependency tree
    btrx
    ```
 
-2. **Check SSE connection**:
-   The MCP server uses Server-Sent Events (SSE) for communication. Ensure your AI client is properly connecting to the SSE endpoint at `http://localhost:3002/sse`
+2. **Check HTTP streaming connection**:
+   The MCP server uses HTTP streamable transport for communication. Ensure your AI client is properly connecting to the MCP endpoint at `http://localhost:3001/mcp` with the correct transport type.
+
+3. **Verify configuration format**:
+   ```json
+   {
+     "mcpServers": [
+        "btrx": {
+          "autoApprove": [],
+          "disabled": false,
+          "url": "http://localhost:3001/mcp",
+          "type": "streamableHttp"
+        }
+     ]
+   }
+   ```
 
 ## Getting Help
 

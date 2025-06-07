@@ -38,7 +38,7 @@
   },
   "keywords": [
     "mcp",
-    "sse",
+    "streamableHttp",
     "tasks"
   ],
   "dependencies": {
