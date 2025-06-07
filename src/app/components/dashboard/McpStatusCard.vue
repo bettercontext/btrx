@@ -8,8 +8,8 @@ import { fetchApi } from '@/app/helpers/api'
 
 import McpToolsDialog from './McpToolsDialog.vue'
 
-const mcpClientCount = ref(0)
-const sseUrl = ref('')
+const serverAvailable = ref(false)
+const mcpUrl = ref('')
 const showModal = ref(false)
 let statusInterval: number | null = null
 
@@ -21,15 +21,19 @@ watch(showModal, (newVal) => {
   }
 })
 
+interface McpStatus {
+  available: boolean
+  httpUrl: string
+}
+
 const updateMcpStatus = async () => {
   try {
-    const statusData = await fetchApi<{ count: number; sseUrl: string }>(
-      '/api/mcp-client-status',
-    )
-    mcpClientCount.value = statusData.count
-    sseUrl.value = statusData.sseUrl
+    const statusData = await fetchApi<McpStatus>('/api/mcp-client-status')
+    serverAvailable.value = statusData.available
+    mcpUrl.value = statusData.httpUrl
   } catch (e) {
     console.error('Failed to fetch MCP status:', e)
+    serverAvailable.value = false
   }
 }
 
@@ -51,24 +55,14 @@ onUnmounted(() => {
     <h2>MCP server status</h2>
     <div class="card-content">
       <div class="info-row status">
-        <span
-          class="status-indicator"
-          :class="{ active: mcpClientCount > 0 }"
-        />
+        <span class="status-indicator" :class="{ active: serverAvailable }" />
         <span class="status-text">{{
-          mcpClientCount > 0 ? 'Connected' : 'No clients'
+          serverAvailable ? 'Server available' : 'Server unavailable'
         }}</span>
-      </div>
-
-      <div v-if="mcpClientCount > 0" class="info-row">
-        <span class="label">
-          Connected client{{ mcpClientCount > 1 ? 's' : '' }}:
-          <strong>{{ mcpClientCount }}</strong>
-        </span>
       </div>
       <div class="info-row">
         <span class="label">Connection URL:</span>
-        <code class="value">{{ sseUrl }}</code>
+        <code class="value">{{ mcpUrl }}</code>
       </div>
     </div>
     <div class="tools-section">

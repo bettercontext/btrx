@@ -1,15 +1,15 @@
 import { Router } from 'express'
 
-import { MCP_PORT } from '@/config'
-import { getMcpClientCount } from '@/sse/transport'
+import { API_PORT } from '@/config'
 
 const router = Router()
 
 router.get('/', (req, res) => {
-  const sseUrl = `http://${req.hostname}:${MCP_PORT}/sse`
+  const httpUrl = `http://${req.hostname}:${API_PORT}/mcp`
+
   res.json({
-    count: getMcpClientCount(),
-    sseUrl,
+    available: true,
+    httpUrl,
   })
 })
 

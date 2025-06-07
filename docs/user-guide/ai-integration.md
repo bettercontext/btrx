@@ -1,10 +1,10 @@
 # AI Integration
 
-Better Context integrates with AI tools using the Model Context Protocol (MCP) with Server-Sent Events (SSE) transport for real-time, context-aware assistance.
+Better Context integrates with AI tools using the Model Context Protocol (MCP) with HTTP streamable transport for real-time, context-aware assistance.
 
 ## Overview
 
-All Better Context integrations use **MCP with SSE transport**, providing:
+All Better Context integrations use **MCP with HTTP streamable transport**, providing:
 
 - **Real-time communication** between AI tools and Better Context
 - **Live updates** of guidelines and repository context
@@ -15,7 +15,7 @@ Supported by any MCP-compatible AI tool (Claude Desktop, Cursor, Cline, etc.).
 
 ## Cline Integration
 
-Cline (VS Code AI assistant) connects to Better Context via MCP SSE for enhanced coding assistance.
+Cline (VS Code AI assistant) connects to Better Context via MCP HTTP streamable transport for enhanced coding assistance.
 
 ### Setup
 
@@ -29,9 +29,8 @@ Open VS Code settings and add to `cline_mcp_settings.json`:
      "btrx": {
        "autoApprove": [],
        "disabled": false,
-       "timeout": 60,
-       "url": "http://localhost:3002/sse",
-       "transportType": "sse"
+       "url": "http://localhost:3001/mcp",
+       "type": "streamableHttp"
      }
   ]
 }
@@ -41,33 +40,33 @@ Open VS Code settings and add to `cline_mcp_settings.json`:
 
 ### Port Configuration
 
-Better Context uses three ports for different services:
+Better Context uses two ports for different services:
 
 - **Port 3000**: Web interface (`WEB_PORT`)
-- **Port 3001**: API server (`API_PORT`)
-- **Port 3002**: MCP SSE transport (`MCP_PORT`)
+- **Port 3001**: API server and MCP transport (`API_PORT`)
+
+The MCP server now runs on the same port as the API server, accessible at `/mcp` endpoint.
 
 ### Custom Port Setup
 
-If any ports are unavailable, configure different ports:
+If the API port (3001) is unavailable, configure a different port:
 
 1. **Update Better Context config:**
 
    ```typescript
    // src/config.ts
    export const WEB_PORT = 3100 // Web interface
-   export const API_PORT = 3101 // API server
-   export const MCP_PORT = 3102 // MCP SSE transport
+   export const API_PORT = 3101 // API server and MCP transport
    ```
 
 2. **Update AI tool configurations:**
    ```json
    {
-     "url": "http://localhost:3102/sse"
+     "url": "http://localhost:3101/mcp"
    }
    ```
 
-**Note:** Only the MCP port (3102 in this example) needs to be configured in AI tools. The web and API ports are used internally by Better Context.
+**Note:** Only the API port needs to be configured in AI tools at the `/mcp` endpoint. The web port is used internally by Better Context for the desktop interface.
 
 ## Next Steps
 

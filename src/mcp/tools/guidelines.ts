@@ -1,7 +1,6 @@
 export const guidelinesTools = [
   {
     name: 'guidelines_analysis',
-    title: 'Guidelines Analysis',
     description:
       'Unified tool for guidelines analysis flow. When called without contextId, initiates the analysis flow and returns the initial prompt. When called with contextId, returns the specific prompt for that context.',
     inputSchema: {
@@ -16,33 +15,16 @@ export const guidelinesTools = [
       },
       additionalProperties: false,
     },
-    outputSchema: {
-      type: 'object',
-      properties: {
-        content: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              type: { type: 'string', enum: ['text'] },
-              text: { type: 'string' },
-            },
-            required: ['type', 'text'],
-            additionalProperties: false,
-          },
-          minItems: 1,
-          maxItems: 1,
-          description:
-            'An array containing a single content block with analysis instructions or context-specific prompt.',
-        },
-      },
-      required: ['content'],
-      additionalProperties: false,
+    annotations: {
+      title: 'Guidelines Analysis',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
     },
   },
   {
     name: 'guidelines_save',
-    title: 'Save Guidelines',
     description:
       'Saves a batch of new guidelines to the database for a given context ID.',
     inputSchema: {
@@ -67,28 +49,12 @@ export const guidelinesTools = [
       required: ['guidelines', 'contextId', 'remainingContextIds'],
       additionalProperties: false,
     },
-    outputSchema: {
-      type: 'object',
-      properties: {
-        content: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              type: { type: 'string', enum: ['text', 'json'] },
-              text: { type: 'string' },
-            },
-            required: ['type', 'text'],
-            additionalProperties: false,
-          },
-          minItems: 1,
-          maxItems: 1,
-          description:
-            'An array containing a single content block with a success message and next steps.',
-        },
-      },
-      required: ['content'],
-      additionalProperties: false,
+    annotations: {
+      title: 'Save Guidelines',
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false,
     },
   },
 ]

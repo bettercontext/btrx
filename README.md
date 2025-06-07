@@ -48,13 +48,21 @@ Better Context uses several configurable ports that can be adjusted in `src/conf
 ## Architecture Overview
 
 - **MCP Server**: Provides structured access to your codebase via the Model Context Protocol
-- **SSE Transport**: Real-time communication using Server-Sent Events
+- **HTTP Streamable Transport**: Real-time communication using HTTP streaming
 - **Desktop App**: Cross-platform Tauri application with Vue.js frontend
 - **Database**: Local PGlite database with Drizzle ORM
 
 ## Documentation
 
 For detailed documentation, please refer to the [Better Context Documentation](https://docs.bettercontext.dev).
+
+## Technical Resources
+
+If you're interested in contributing or exploring the codebase, here are some useful links:
+
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/bettercontext/btrx)
+
+[MCP Inspector](https://github.com/alpic-ai/grizzly)
 
 ## License
 

@@ -15,7 +15,7 @@ features:
   - title: 🖥️ Cross-Platform App
     details: Desktop application built with Tauri and Vue.js that provides a dedicated interface, eliminating the need to hunt for it among dozens of browser tabs.
   - title: 🔌 MCP Server Integration
-    details: Built on the Model Context Protocol with SSE transport for real-time communication between your tools and LLMs.
+    details: Built on the Model Context Protocol with HTTP streamable transport for real-time communication between your tools and LLMs.
 
 footer: Apache 2.0 Licensed | Copyright © 2025 Eddy Bordi
 ---
@@ -50,7 +50,7 @@ The command automatically detects your current directory, starts the MCP server,
 Better Context combines several technologies to create a seamless AI-assisted development experience:
 
 - **MCP Server**: Provides structured access to your codebase via the Model Context Protocol
-- **SSE Transport**: Real-time communication using Server-Sent Event
+- **HTTP Streamable Transport**: Real-time communication using HTTP streaming
 - **Desktop App**: Cross-platform Tauri application with Vue.js
 - **Database**: Local PGlite database with Drizzle ORM
 
