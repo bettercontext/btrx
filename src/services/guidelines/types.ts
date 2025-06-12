@@ -27,3 +27,18 @@ export interface GuidelinesContext {
   repositoryId: number
   content?: GuidelinesContent
 }
+
+export interface PendingContext {
+  id: number
+  name: string
+  repositoryId: number
+}
+
+export interface DiffData {
+  contextName: string
+  diff: Array<{
+    value: string
+    added?: boolean
+    removed?: boolean
+  }>
+}

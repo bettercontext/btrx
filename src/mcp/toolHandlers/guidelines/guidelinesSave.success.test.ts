@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { db } from '@/db'
-import { createGuidelineByContextId } from '@/services/guidelines'
+import { saveCurrentGuidelines } from '@/services/guidelines'
 import {
   createTestContexts,
   createTestRepositories,
@@ -16,7 +16,7 @@ vi.mock('@/helpers/promptReader', () => ({
 }))
 
 describe('handleGuidelinesSave - Success Scenarios', () => {
-  const mockGuidelinesList = ['guideline1', 'guideline2']
+  const mockGuidelines = ['guideline1', 'guideline2']
   let testRepositoryId: number
   let testContextId: number
   let testNextContextId: number
@@ -45,7 +45,7 @@ describe('handleGuidelinesSave - Success Scenarios', () => {
 
   it('should save new guidelines and prompt for the next context', async () => {
     const args = {
-      guidelines: mockGuidelinesList,
+      guidelines: mockGuidelines,
       contextId: testContextId,
       remainingContextIds: [testNextContextId, testLastContextId],
     }
@@ -61,12 +61,15 @@ describe('handleGuidelinesSave - Success Scenarios', () => {
     })
   })
 
-  it('should handle a mix of new and existing guidelines, then prompt for next context', async () => {
-    // Create one existing guideline using the context ID directly
-    await createGuidelineByContextId(mockGuidelinesList[0], testContextId)
+  it('should handle updating existing guidelines, then prompt for next context', async () => {
+    // Create existing guidelines first
+    await saveCurrentGuidelines(
+      testContextId,
+      'old guideline1\n-_-_-\nold guideline2',
+    )
 
     const args = {
-      guidelines: mockGuidelinesList,
+      guidelines: mockGuidelines,
       contextId: testContextId,
       remainingContextIds: [testNextContextId],
     }
@@ -82,14 +85,9 @@ describe('handleGuidelinesSave - Success Scenarios', () => {
     })
   })
 
-  it('should handle all guidelines already existing, then prompt for next context', async () => {
-    // Create all existing guidelines using the context ID directly
-    for (const guideline of mockGuidelinesList) {
-      await createGuidelineByContextId(guideline, testContextId)
-    }
-
+  it('should save guidelines when no previous version exists, then prompt for next context', async () => {
     const args = {
-      guidelines: mockGuidelinesList,
+      guidelines: mockGuidelines,
       contextId: testContextId,
       remainingContextIds: [testNextContextId],
     }
@@ -106,10 +104,10 @@ describe('handleGuidelinesSave - Success Scenarios', () => {
   })
 
   it('should save guidelines and indicate completion if it is the last context', async () => {
-    const expectedPromptText = `Guidelines analysis complete for all selected contexts! Saved ${mockGuidelinesList.length} guidelines for the last context (ID: ${testLastContextId}). 0 guidelines already existed. 0 errors.`
+    const expectedPromptText = `Guidelines analysis complete for all selected contexts! Guidelines saved for context ${testLastContextId}.`
 
     const args = {
-      guidelines: mockGuidelinesList,
+      guidelines: mockGuidelines,
       contextId: testLastContextId,
       remainingContextIds: [], // Empty array indicates this is the last context
     }

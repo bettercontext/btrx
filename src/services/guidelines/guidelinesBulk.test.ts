@@ -92,7 +92,9 @@ describe('guidelinesBulk service (with in-memory database)', () => {
         .from(guidelinesContent)
         .where(eq(guidelinesContent.contextId, testContextId))
 
-      expect(contentRows[0].content).toBe('First guideline\nSecond guideline')
+      expect(contentRows[0].content).toBe(
+        'First guideline\n-_-_-\nSecond guideline',
+      )
     })
 
     it('should throw error when no guidelines found', async () => {
@@ -121,10 +123,7 @@ describe('guidelinesBulk service (with in-memory database)', () => {
         testContextId,
       )
 
-      const guideline3 = await createGuidelineByContextId(
-        'To keep',
-        testContextId,
-      )
+      await createGuidelineByContextId('To keep', testContextId)
 
       // Delete first two guidelines
       const deleted = await bulkDeleteGuidelines([guideline1.id, guideline2.id])
@@ -148,7 +147,7 @@ describe('guidelinesBulk service (with in-memory database)', () => {
         .from(guidelinesContent)
         .where(eq(guidelinesContent.contextId, testContextId))
 
-      expect(contentRows[0].content).toBe('// To keep')
+      expect(contentRows[0].content).toBe('To keep')
 
       // Also verify that guideline3 still exists and can be retrieved
       const remainingGuidelines =
@@ -156,12 +155,10 @@ describe('guidelinesBulk service (with in-memory database)', () => {
       expect(remainingGuidelines).toHaveLength(1)
       expect(remainingGuidelines[0]).toMatchObject({
         content: 'To keep',
-        active: false,
+        active: true,
         contextName: 'coding-standards',
       })
-      // Note: ID should remain the same because virtual IDs are based on content,
-      // not line positions
-      expect(remainingGuidelines[0].id).toBe(guideline3.id)
+      // With position-based virtual IDs, the ID changes after deletions
       expect(remainingGuidelines[0].id).toBeTypeOf('number')
     })
 

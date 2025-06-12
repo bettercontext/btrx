@@ -20,6 +20,4 @@ export const guidelinesContent = pgTable('guidelines_content', {
     .references(() => guidelinesContexts.id, { onDelete: 'cascade' })
     .notNull(),
   content: text('content').notNull().default(''),
-  createdAt: integer('created_at').notNull().default(0),
-  updatedAt: integer('updated_at').notNull().default(0),
 })

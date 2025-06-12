@@ -18,8 +18,9 @@ The source code is organized as follows:
   - `btrx.js`: Executable script for the `Better Context` command
 - `src/`
   - `app/`: Vue.js frontend application
-    - `components/`: Reusable Vue components (DarkModeToggle, GuidelinesContextsManager, etc.)
+    - `components/`: Reusable Vue components (DarkModeToggle, GuidelinesTableWithDiff, etc.)
     - `composables/`: Vue composables for shared logic
+      - `guidelines/`: Guidelines-specific composables (useGuidelines, useGuidelinesDiff)
     - `views/`: Page components (Dashboard, Guidelines, Workflows)
     - `router/`: Vue Router configuration
     - `helpers/`: Utility functions
@@ -36,12 +37,13 @@ The source code is organized as follows:
     - `guidelines/`: Guidelines-specific prompts
       - `contexts/`: Context-specific analysis prompts (Back.md, Front.md)
       - `beginGuidelinesAnalysis.md`: Initial workflow prompt with context selection
+      - `updateGuidelinesAnalysis.md`: Update workflow prompt for existing guidelines
       - `noContextsFound.md`: Fallback when no contexts exist
   - `helpers/`: Utility functions
     - `templateEngine.ts`: Template rendering with variable substitution and loops
     - `promptReader.ts`: Prompt file loading with template processing
   - `routes/`: API endpoints with hierarchical organization
-    - `guidelines/`: Guidelines management routes (contexts, guidelines, presets)
+    - `guidelines/`: Guidelines management routes (contexts, guidelines, presets, diff)
     - `mcp/`: MCP-related routes (tools, client status)
     - `repositories/`: Repository routes (git info, repositories)
     - `system/`: System routes (health, info)
@@ -63,6 +65,8 @@ The source code is organized as follows:
   - Uses template engine for dynamic prompt generation with context data
 - **`guidelines_save`**
   - Saves batch of guidelines for a specific context ID
+  - When guidelines already exist: creates pending version for diff review
+  - When no existing guidelines: saves directly as active version
   - Handles duplicate detection and validation
   - Automatically continues workflow with remaining contexts
   - Returns next steps or completion status
@@ -93,6 +97,11 @@ text: string
 - Preset management
 - Repository-specific configurations
 - Real-time updates via HTTP streaming
+- Diff and versioning system
+  - Pending versions when updating existing guidelines
+  - Visual diff interface with added/removed/unchanged indicators
+  - Validate or cancel pending changes
+  - Prevents accidental overwrites of existing guidelines
 
 ## Desktop Integration
 
@@ -123,6 +132,11 @@ text: string
 - `/api/guidelines`: Guidelines management
 - `/api/guidelines-contexts`: Context configuration
 - `/api/guidelines-presets`: Preset management
+- `/api/guidelines-diff`: Diff management for pending guidelines
+  - `/api/guidelines-diff/contexts`: Get contexts with pending versions
+  - `/api/guidelines-diff/:contextId`: Get diff data for specific context
+  - `/api/guidelines-diff/:contextId/validate`: Validate pending changes
+  - `/api/guidelines-diff/:contextId/cancel`: Cancel pending changes
 - `/api/repositories`: Repository information
 - `/api/git-info`: Git repository details
 - `/api/mcp-client-status`: Client state management

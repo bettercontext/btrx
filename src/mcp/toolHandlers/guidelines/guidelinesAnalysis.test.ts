@@ -2,6 +2,9 @@ import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { db } from '@/db'
+import { guidelinesContent } from '@/db/schema'
+import { readPrompt } from '@/helpers/promptReader'
+import type { TemplateVariables } from '@/helpers/templateEngine'
 import {
   createTestContexts,
   createTestRepositories,
@@ -47,6 +50,36 @@ describe('handleGuidelinesAnalysis', () => {
 
   afterEach(() => {
     consoleErrorSpy.mockRestore()
+  })
+
+  describe('disabled state handling', () => {
+    it('should not include [DISABLED] markers in prompt', async () => {
+      vi.mocked(readPrompt).mockImplementation(
+        (_category, _name, data?: TemplateVariables) => {
+          // Just return template variables directly to simulate rendered template
+          return Promise.resolve(JSON.stringify(data || {}))
+        },
+      )
+
+      await db.insert(guidelinesContent).values({
+        contextId: testContextId,
+        content: '[DISABLED] Test 1\n-_-_-\nTest 2\n-_-_-\n[DISABLED] Test 3',
+      })
+
+      const args = { contextIds: [testContextId] }
+      await handleGuidelinesAnalysis(args, { CWD: '/test/project' })
+
+      // Verify the readPrompt call received guidelines without [DISABLED] markers
+      const promptCalls = vi.mocked(readPrompt).mock.calls
+      expect(promptCalls[0][0]).toBe('guidelines')
+      expect(promptCalls[0][1]).toBe('updateGuidelinesAnalysis')
+
+      const data = promptCalls[0][2] as TemplateVariables
+      expect(data).toBeDefined()
+      expect(data.existingGuidelines).toBe(
+        'Test 1\n-_-_-\nTest 2\n-_-_-\nTest 3',
+      )
+    })
   })
 
   describe('with contextIds (specific context prompt)', () => {

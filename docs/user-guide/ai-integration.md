@@ -70,7 +70,7 @@ If the API port (3001) is unavailable, configure a different port:
 
 ## Next Steps
 
-- [Learn how to use Better Context](./using-better-context.md)
+- [Contexts and Guidelines](./contexts-and-guidelines.md)
 - [Generate coding guidelines](./guidelines-analysis.md)
 
 ## Need Help?

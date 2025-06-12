@@ -7,6 +7,8 @@ import { z } from 'zod'
 import { db } from '@/db'
 import { guidelinesContexts } from '@/db/schema'
 import { readPrompt } from '@/helpers/promptReader'
+import { getCurrentGuidelines } from '@/services/guidelines'
+import { parseGuidelinesText } from '@/services/guidelines/textParser'
 import { findOrCreateRepositoryByPath } from '@/services/repositoryService'
 
 const execAsync = promisify(exec)
@@ -126,10 +128,34 @@ export async function handleGuidelinesAnalysis(
       )
     }
 
-    const prompt = contextEntry[0].prompt
-    console.log(
-      `[GuidelinesAnalysis Handler] Returning prompt for context ID: ${currentContextId}`,
-    )
+    const context = contextEntry[0]
+    const existingGuidelines = await getCurrentGuidelines(currentContextId)
+
+    let prompt: string
+    if (existingGuidelines) {
+      // Process guidelines to remove [DISABLED] markers before sending to LLM
+      const parsedGuidelines = parseGuidelinesText(existingGuidelines)
+      const cleanGuidelines = parsedGuidelines
+        .map((g) => g.content)
+        .join('\n-_-_-\n')
+
+      // Update : include actual guidelines in the prompt without [DISABLED] markers
+      prompt = await readPrompt('guidelines', 'updateGuidelinesAnalysis', {
+        contextName: context.name,
+        existingGuidelines: cleanGuidelines,
+        contextPrompt: context.prompt,
+      })
+      console.log(
+        `[GuidelinesAnalysis Handler] Update mode for context "${context.name}" (ID: ${currentContextId})`,
+      )
+    } else {
+      // New creation : use context prompt
+      prompt = context.prompt
+      console.log(
+        `[GuidelinesAnalysis Handler] Creation mode for context "${context.name}" (ID: ${currentContextId})`,
+      )
+    }
+
     return { content: [{ type: 'text', text: prompt }] }
   } catch (error) {
     console.error(

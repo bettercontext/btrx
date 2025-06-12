@@ -1,4 +1,3 @@
-import { normalizeGuidelineContent } from './textParser'
 import type { ParsedGuideline } from './types'
 
 function hashString(str: string): number {
@@ -14,10 +13,8 @@ function hashString(str: string): number {
   return Math.abs(hash)
 }
 
-export function generateVirtualId(contextId: number, content: string): number {
-  const normalizedContent = normalizeGuidelineContent(content)
-  const contentHash = hashString(normalizedContent)
-  const combined = `${contextId}-${contentHash}`
+export function generateVirtualId(contextId: number, position: number): number {
+  const combined = `${contextId}-${position}`
   return hashString(combined)
 }
 
@@ -25,9 +22,9 @@ export function parseGuidelinesToVirtual(
   contextId: number,
   guidelines: ParsedGuideline[],
 ): Array<ParsedGuideline & { id: number }> {
-  return guidelines.map((guideline) => ({
+  return guidelines.map((guideline, idx) => ({
     ...guideline,
-    id: generateVirtualId(contextId, guideline.content),
+    id: generateVirtualId(contextId, idx),
   }))
 }
 
@@ -38,8 +35,7 @@ export function findGuidelineByVirtualId(
 ): ParsedGuideline | null {
   return (
     guidelines.find(
-      (guideline) =>
-        generateVirtualId(contextId, guideline.content) === virtualId,
+      (_, idx) => generateVirtualId(contextId, idx) === virtualId,
     ) || null
   )
 }

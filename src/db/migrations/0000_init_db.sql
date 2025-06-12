@@ -2,8 +2,6 @@ CREATE TABLE "guidelines_content" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"context_id" integer NOT NULL,
 	"content" text DEFAULT '' NOT NULL,
-	"created_at" integer DEFAULT 0 NOT NULL,
-	"updated_at" integer DEFAULT 0 NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "guidelines_contexts" (

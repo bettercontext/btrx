@@ -13,12 +13,12 @@ import { cleanTestDb } from '@/testing/helpers/testDb'
 import { handleGuidelinesSave } from './guidelinesSave'
 
 vi.mock('@/services/guidelines', () => ({
-  getGuidelinesForRepositoryById: vi.fn(),
-  createGuidelineByContextId: vi.fn(),
+  saveCurrentGuidelines: vi.fn(),
+  getCurrentGuidelines: vi.fn().mockResolvedValue(null),
 }))
 
 describe('handleGuidelinesSave - DB and Runtime Error Scenarios', () => {
-  const mockGuidelinesList = ['guideline1', 'guideline2']
+  const mockGuidelines = ['guideline1', 'guideline2']
   let testContextId: number
   const mcpContext = { CWD: '/test/project' }
 
@@ -44,14 +44,15 @@ describe('handleGuidelinesSave - DB and Runtime Error Scenarios', () => {
     consoleErrorSpy.mockRestore()
   })
 
-  it('should throw McpError if existing guidelines check fails', async () => {
-    // Mock service to fail on getGuidelinesForRepositoryById
-    vi.mocked(
-      guidelinesService.getGuidelinesForRepositoryById,
-    ).mockRejectedValue(new Error('Service guidelines fetch failed'))
+  it('should throw McpError if guidelines save fails', async () => {
+    const mockError = new Error('Service guidelines save failed')
+    // Mock service to fail on saveCurrentGuidelines
+    vi.mocked(guidelinesService.saveCurrentGuidelines).mockRejectedValue(
+      mockError,
+    )
 
     const args = {
-      guidelines: mockGuidelinesList,
+      guidelines: mockGuidelines,
       contextId: testContextId,
       remainingContextIds: [],
     }
@@ -62,39 +63,39 @@ describe('handleGuidelinesSave - DB and Runtime Error Scenarios', () => {
       await handleGuidelinesSave(args, mcpContext)
     } catch (e: any) {
       expect(e.code).toBe(ErrorCode.InternalError)
-      expect(e.message).toContain('Service guidelines fetch failed')
+      expect(e.message).toBe('MCP error -32603: Failed to save guidelines')
     }
   })
 
-  it('should handle guidelines creation errors gracefully and report them', async () => {
-    // Mock successful guidelines fetch (no existing guidelines)
-    vi.mocked(
-      guidelinesService.getGuidelinesForRepositoryById,
-    ).mockResolvedValue([])
-
-    // Mock failed guidelines creation
-    vi.mocked(guidelinesService.createGuidelineByContextId).mockRejectedValue(
-      new Error('Service guidelines creation failed'),
+  it('should handle guidelines save errors gracefully', async () => {
+    const mockError = new Error('Service guidelines save failed')
+    // Mock failed guidelines save
+    vi.mocked(guidelinesService.saveCurrentGuidelines).mockRejectedValue(
+      mockError,
     )
 
     const args = {
-      guidelines: mockGuidelinesList,
+      guidelines: mockGuidelines,
       contextId: testContextId,
       remainingContextIds: [],
     }
-    const result = await handleGuidelinesSave(args, mcpContext)
 
-    // Should complete successfully but report errors
-    expect(result).toHaveProperty('content')
-    expect(result.content[0].type).toBe('text')
-    expect(result.content[0].text).toContain('2 errors')
-    expect(result.content[0].text).toContain('Saved 0 guidelines')
+    await expect(handleGuidelinesSave(args, mcpContext)).rejects.toThrow(
+      McpError,
+    )
+
+    try {
+      await handleGuidelinesSave(args, mcpContext)
+    } catch (e: any) {
+      expect(e.code).toBe(ErrorCode.InternalError)
+      expect(e.message).toBe('MCP error -32603: Failed to save guidelines')
+    }
   })
 
   it('should handle context not found error', async () => {
     const nonExistentContextId = 99999
     const args = {
-      guidelines: mockGuidelinesList,
+      guidelines: mockGuidelines,
       contextId: nonExistentContextId,
       remainingContextIds: [],
     }
