@@ -231,19 +231,14 @@ describe('repositoryService', () => {
         .returning({ id: guidelinesContexts.id })
 
       // Create guidelines content for these contexts
-      const now = Math.floor(Date.now() / 1000)
       await db.insert(guidelinesContent).values([
         {
           contextId: context1.id,
           content: 'Use TypeScript for all frontend code',
-          createdAt: now,
-          updatedAt: now,
         },
         {
           contextId: context2.id,
           content: 'Use Node.js for backend services',
-          createdAt: now,
-          updatedAt: now,
         },
       ])
 

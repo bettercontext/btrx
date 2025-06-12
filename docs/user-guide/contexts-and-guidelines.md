@@ -149,6 +149,83 @@ Contexts are tied to specific repositories:
 - Context names must be unique within a repository
 - You can have the same context name in different repositories
 
+## Guidelines Versioning
+
+Better Context includes a versioning system to manage updates to existing guidelines safely and transparently.
+
+### How Versioning Works
+
+When generating new guidelines for a context that already contains guidelines:
+
+1. **Automatic Detection**: The system detects existing guidelines
+2. **Pending Version Creation**: New guidelines are saved as a "pending version"
+3. **Diff Interface**: The web interface displays a visual comparison
+4. **User Decision**: You choose to validate or cancel the changes
+
+### Identifying Pending Changes
+
+The Guidelines interface provides clear indicators when contexts have pending changes:
+
+- **Visual Indicators**: Contexts with pending versions are highlighted
+- **Diff View**: Click to see detailed changes between current and pending guidelines
+- **Status Information**: Clear labeling of which contexts require attention
+
+### Managing Pending Versions
+
+#### Viewing Differences
+
+The diff interface shows:
+
+- **Added Guidelines**: New guidelines in green
+- **Removed Guidelines**: Deleted guidelines in red
+- **Unchanged Guidelines**: Existing guidelines that remain the same
+- **Context Information**: Which context the changes apply to
+
+#### Taking Action
+
+For each context with pending changes, you have two options:
+
+**Validate Changes**
+
+- Accepts the new guidelines as the current version
+- Replaces existing guidelines with the new analysis results
+- Use when the new analysis provides improved or updated guidelines
+
+**Cancel Changes**
+
+- Discards the pending version
+- Keeps the current guidelines unchanged
+- Use when existing guidelines are preferred or new analysis is unsatisfactory
+
+### Best Practices for Version Management
+
+**Review Carefully**
+
+- Always examine the diff before making a decision
+- Consider whether changes improve or degrade guideline quality
+- Look for completeness and accuracy in new guidelines
+
+**Context-by-Context Decisions**
+
+- Each context can be handled independently
+- Some contexts may warrant validation while others should be cancelled
+- Make decisions based on the specific analysis quality for each context
+
+**Timely Resolution**
+
+- Address pending changes promptly to avoid workflow interruption
+- New analysis cannot proceed while unresolved diffs exist
+- Regular maintenance keeps the system running smoothly
+
+### Error Prevention
+
+The versioning system includes safeguards:
+
+- **No Accidental Overwrites**: Existing guidelines are never lost without user confirmation
+- **Clear Workflow**: Visual interface guides decision-making process
+- **Data Integrity**: System ensures consistency throughout the process
+- **Blocking Mechanism**: Prevents conflicting operations while diffs are pending
+
 ## Context Workflow Example
 
 Here's a typical workflow for setting up contexts:

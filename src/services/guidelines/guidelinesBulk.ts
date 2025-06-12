@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { guidelinesContent, guidelinesContexts } from '@/db/schema'
 
+import { cleanupEmptyContent } from './cleanupEmptyContent'
 import {
   parseGuidelinesText,
   removeGuidelineFromText,
@@ -15,10 +16,9 @@ async function updateGuidelinesContent(
   contextId: number,
   content: string,
 ): Promise<void> {
-  const now = Math.floor(Date.now() / 1000)
   await db
     .update(guidelinesContent)
-    .set({ content, updatedAt: now })
+    .set({ content })
     .where(eq(guidelinesContent.contextId, contextId))
 }
 
@@ -170,6 +170,11 @@ export const bulkDeleteGuidelines = async (
     // Update all modified contexts
     for (const [contextId, content] of contextUpdates) {
       await updateGuidelinesContent(contextId, content)
+    }
+
+    // Cleanup empty content
+    for (const contextId of contextUpdates.keys()) {
+      await cleanupEmptyContent(contextId)
     }
 
     return deletedGuidelines

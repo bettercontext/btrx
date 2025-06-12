@@ -30,19 +30,30 @@ graph TD
     K --> L[AI Scans Files & Analyzes Patterns]
     L --> M[AI Generates Guidelines]
     M --> N[MCP Tool: guidelines_save]
-    N --> O[Store Guidelines in Database]
-    O --> P{More Contexts in Array?}
+    N --> O{Guidelines Already Exist?}
 
-    P -->|Yes| Q[Return Continue Prompt with Remaining contextIds]
-    Q --> R[AI calls guidelines_analysis with remaining contextIds]
-    R --> J
+    O -->|No| P[Store Guidelines Directly]
+    O -->|Yes| Q[Create Pending Version]
+    Q --> R[Web Interface Shows Diff]
+    R --> S{User Action}
+    S -->|Validate| T[Replace Current with Pending]
+    S -->|Cancel| U[Remove Pending Version]
 
-    P -->|No| S[Analysis Complete]
+    P --> V{More Contexts in Array?}
+    T --> V
+    U --> V
 
-    T[HTTP Streaming Events] --> U[Real-time Progress Updates]
-    C --> T
-    L --> T
-    O --> T
+    V -->|Yes| W[Return Continue Prompt with Remaining contextIds]
+    W --> X[AI calls guidelines_analysis with remaining contextIds]
+    X --> J
+
+    V -->|No| Y[Analysis Complete]
+
+    Z[HTTP Streaming Events] --> AA[Real-time Progress Updates]
+    C --> Z
+    L --> Z
+    P --> Z
+    Q --> Z
 ```
 
 ## Workflow Steps
@@ -80,7 +91,9 @@ The workflow processes each context sequentially through a loop mechanism:
 
 4. **Guidelines Storage**
    - AI calls `guidelines_save` with generated guidelines and context ID
-   - Guidelines are stored in the database and associated with the context
+   - System checks if guidelines already exist for this context
+   - **New Guidelines**: Stored directly in the database
+   - **Existing Guidelines**: Creates a pending version for review
 
 #### Loop Continuation:
 
@@ -127,6 +140,68 @@ The system uses intelligent prompting with templating:
 ### Context-Aware Guidelines
 
 Each context produces specialized guidelines.
+
+## Guidelines Versioning and Diff Management
+
+When generating new guidelines for a context that already has existing guidelines, Better Context implements a versioning system to prevent accidental overwrites and provide visibility into changes.
+
+### Automatic Version Detection
+
+The system automatically detects when guidelines already exist for a context:
+
+- **First-time Generation**: Guidelines are stored directly without versioning
+- **Subsequent Generations**: Creates a "pending version" alongside the current guidelines
+- **Protection**: Prevents immediate overwrite of existing work
+
+### Diff Visualization
+
+When pending versions are created, the web interface provides a comprehensive diff view:
+
+- **Side-by-side Comparison**: Current guidelines vs. pending changes
+- **Line-by-line Analysis**: Visual indicators for added, removed, and unchanged content
+- **Context Information**: Clear labeling of which context has pending changes
+
+### User Actions
+
+For each pending version, users can take one of two actions:
+
+#### Validate Changes
+
+- **Action**: Replaces current guidelines with the pending version
+- **Effect**: Pending version becomes the new current guidelines
+- **Use Case**: When the new analysis provides better or updated guidelines
+
+#### Cancel Changes
+
+- **Action**: Discards the pending version
+- **Effect**: Current guidelines remain unchanged
+- **Use Case**: When current guidelines are preferred or new analysis is incorrect
+
+### Workflow Considerations
+
+#### Multiple Contexts
+
+- Each context manages its own versions independently
+- Partial validation is supported (validate some contexts, cancel others)
+- Analysis can continue with remaining contexts after resolving diffs
+
+#### Error Prevention
+
+- System blocks new analysis attempts when unresolved diffs exist
+- Clear error messages guide users to resolve pending changes first
+- Ensures data consistency and prevents confusion
+
+#### Web Interface Integration
+
+- Visual indicators for contexts with pending changes
+- Streamlined workflow for reviewing and managing multiple diffs
+
+### Best Practices
+
+1. **Review Before Validating**: Always examine the diff to understand what's changing
+2. **Context-Specific Decisions**: Each context may warrant different actions based on analysis quality
+3. **Incremental Updates**: Consider validating high-quality changes and canceling questionable ones
+4. **Regular Maintenance**: Address pending diffs promptly to keep the workflow smooth
 
 ## Need Help?
 

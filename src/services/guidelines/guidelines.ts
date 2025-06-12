@@ -1,9 +1,10 @@
-import { and, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 
 import { db } from '@/db'
 import { guidelinesContent, guidelinesContexts } from '@/db/schema'
 import { findRepositoryByPath } from '@/services/repositoryService'
 
+import { cleanupEmptyContent } from './cleanupEmptyContent'
 import {
   addGuidelineToText,
   normalizeGuidelineContent,
@@ -32,12 +33,9 @@ async function getOrCreateGuidelinesContent(
     return existingContent[0].content
   }
 
-  const now = Math.floor(Date.now() / 1000)
   await db.insert(guidelinesContent).values({
     contextId,
     content: '',
-    createdAt: now,
-    updatedAt: now,
   })
 
   return ''
@@ -47,10 +45,9 @@ async function updateGuidelinesContent(
   contextId: number,
   content: string,
 ): Promise<void> {
-  const now = Math.floor(Date.now() / 1000)
   await db
     .update(guidelinesContent)
-    .set({ content, updatedAt: now })
+    .set({ content })
     .where(eq(guidelinesContent.contextId, contextId))
 }
 
@@ -70,6 +67,7 @@ export const getGuidelinesForRepositoryById = async (
         id: guidelinesContexts.id,
         name: guidelinesContexts.name,
         content: guidelinesContent.content,
+        contentId: guidelinesContent.id,
       })
       .from(guidelinesContexts)
       .leftJoin(
@@ -77,8 +75,10 @@ export const getGuidelinesForRepositoryById = async (
         eq(guidelinesContexts.id, guidelinesContent.contextId),
       )
       .where(and(...whereConditions))
+      .orderBy(asc(guidelinesContent.id))
 
     const allGuidelines: Guideline[] = []
+    const guidelinesByContext = new Map<number, Guideline[]>()
 
     for (const context of contexts) {
       const textContent = context.content || ''
@@ -96,10 +96,21 @@ export const getGuidelinesForRepositoryById = async (
         contextName: context.name,
       }))
 
+      if (guidelinesByContext.has(context.id)) {
+        const existingGuidelines = guidelinesByContext.get(context.id)
+        if (existingGuidelines) {
+          existingGuidelines.push(...guidelines)
+        }
+      } else {
+        guidelinesByContext.set(context.id, guidelines)
+      }
+    }
+
+    for (const guidelines of guidelinesByContext.values()) {
       allGuidelines.push(...guidelines)
     }
 
-    return allGuidelines.reverse()
+    return allGuidelines
   } catch (error) {
     console.error('Error fetching guidelines by repository ID:', error)
     throw new Error('Failed to fetch guidelines.')
@@ -156,7 +167,7 @@ export const createGuidelineByContextId = async (
       throw new Error('This guideline already exists for the given context.')
     }
 
-    const newContent = addGuidelineToText(existingContent, content, false)
+    const newContent = addGuidelineToText(existingContent, content, true)
     await updateGuidelinesContent(contextId, newContent)
 
     const newGuidelines = parseGuidelinesText(newContent)
@@ -168,7 +179,11 @@ export const createGuidelineByContextId = async (
       throw new Error('Failed to create guideline.')
     }
 
-    const virtualId = generateVirtualId(contextId, addedGuideline.content)
+    // Find the position of the added guideline in the array
+    const idx = newGuidelines.findIndex(
+      (g) => normalizeGuidelineContent(g.content) === normalizedNewContent,
+    )
+    const virtualId = generateVirtualId(contextId, idx)
 
     return {
       id: virtualId,
@@ -335,7 +350,13 @@ export const updateGuidelineContent = async (
     )
     await updateGuidelinesContent(foundContext.id, updatedContent)
 
-    const newVirtualId = generateVirtualId(foundContext.id, newContent)
+    const updatedGuidelines = parseGuidelinesText(updatedContent)
+    const idx = updatedGuidelines.findIndex(
+      (g) =>
+        normalizeGuidelineContent(g.content) ===
+        normalizeGuidelineContent(newContent),
+    )
+    const newVirtualId = generateVirtualId(foundContext.id, idx)
 
     return {
       id: newVirtualId,
@@ -410,6 +431,8 @@ export const deleteGuideline = async (id: number): Promise<Guideline> => {
       foundGuideline.content,
     )
     await updateGuidelinesContent(foundContext.id, newContent)
+
+    await cleanupEmptyContent(foundContext.id)
 
     return foundGuideline
   } catch (error) {

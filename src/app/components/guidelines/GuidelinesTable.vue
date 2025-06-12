@@ -7,7 +7,7 @@ import DataTable from 'primevue/datatable'
 import InputSwitch from 'primevue/inputswitch'
 import Menu from 'primevue/menu'
 
-import type { Guideline } from '@/app/composables/guidelines/useGuidelines'
+import type { Guideline } from '@/services/guidelines'
 
 interface Props {
   guidelines: Guideline[]
@@ -65,7 +65,11 @@ const menuItems = [
       @update:selection="$emit('update:selectedGuidelines', $event)"
     >
       <Column selection-mode="multiple" header-style="width: 3rem" />
-      <Column field="content" header="Guideline" style="width: 100%" />
+      <Column field="content" header="Guideline" style="width: 100%">
+        <template #body="{ data }">
+          <div class="guideline-content">{{ data.content }}</div>
+        </template>
+      </Column>
       <Column field="active" header="Active">
         <template #body="{ data }">
           <InputSwitch
@@ -97,5 +101,9 @@ const menuItems = [
 
 .has-selected {
   padding-bottom: 55px;
+}
+
+.guideline-content {
+  white-space: pre-wrap;
 }
 </style>

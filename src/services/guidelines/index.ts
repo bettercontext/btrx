@@ -8,6 +8,14 @@ export {
   deleteGuideline,
 } from './guidelines'
 export {
+  getCurrentGuidelines,
+  saveCurrentGuidelines,
+  getContextsWithPendingVersions,
+  getGuidelinesDiff,
+  validatePendingGuidelines,
+  cancelPendingGuidelines,
+} from './guidelinesDiff'
+export {
   bulkUpdateGuidelinesState,
   bulkDeleteGuidelines,
 } from './guidelinesBulk'

@@ -24,8 +24,6 @@ export interface TestGuideline {
   id: number
   contextId: number
   content: string
-  createdAt: number
-  updatedAt: number
 }
 
 export interface TestDataSet {
@@ -112,7 +110,6 @@ export async function createTestGuidelines(
   ],
 ): Promise<TestGuideline[]> {
   const results: TestGuideline[] = []
-  const now = Math.floor(Date.now() / 1000)
 
   for (const content of contents) {
     const [guideline] = await db
@@ -120,15 +117,11 @@ export async function createTestGuidelines(
       .values({
         contextId,
         content,
-        createdAt: now,
-        updatedAt: now,
       })
       .returning({
         id: guidelinesContent.id,
         contextId: guidelinesContent.contextId,
         content: guidelinesContent.content,
-        createdAt: guidelinesContent.createdAt,
-        updatedAt: guidelinesContent.updatedAt,
       })
 
     results.push(guideline)
@@ -189,8 +182,6 @@ export async function getGuidelinesByContext(
       id: guidelinesContent.id,
       contextId: guidelinesContent.contextId,
       content: guidelinesContent.content,
-      createdAt: guidelinesContent.createdAt,
-      updatedAt: guidelinesContent.updatedAt,
     })
     .from(guidelinesContent)
     .where(eq(guidelinesContent.contextId, contextId))

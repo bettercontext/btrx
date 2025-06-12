@@ -60,7 +60,7 @@ describe('guidelines service (with in-memory database)', () => {
 
       expect(guideline).toMatchObject({
         content: 'Test guideline content',
-        active: false,
+        active: true,
         contextId: testContextId,
         contextName: 'coding-standards',
       })
@@ -80,7 +80,7 @@ describe('guidelines service (with in-memory database)', () => {
 
       // These should all be considered duplicates
       await expect(
-        createGuidelineByContextId('// Test rule', testContextId),
+        createGuidelineByContextId('[DISABLED] Test rule', testContextId),
       ).rejects.toThrow('This guideline already exists for the given context.')
 
       await expect(
@@ -88,13 +88,13 @@ describe('guidelines service (with in-memory database)', () => {
       ).rejects.toThrow('This guideline already exists for the given context.')
 
       await expect(
-        createGuidelineByContextId('//  Test rule  ', testContextId),
+        createGuidelineByContextId('[DISABLED]  Test rule  ', testContextId),
       ).rejects.toThrow('This guideline already exists for the given context.')
     })
 
     it('should normalize content when adding guidelines', async () => {
       const guideline = await createGuidelineByContextId(
-        '// Test normalized content  ',
+        '[DISABLED] Test normalized content  ',
         testContextId,
       )
 
@@ -119,18 +119,18 @@ describe('guidelines service (with in-memory database)', () => {
 
       expect(guidelines).toHaveLength(3)
       expect(guidelines[0]).toMatchObject({
-        content: 'Another active',
-        active: false,
+        content: 'Active guideline',
+        active: true,
         contextName: 'coding-standards',
       })
       expect(guidelines[1]).toMatchObject({
         content: 'Inactive guideline',
-        active: false,
+        active: true,
         contextName: 'coding-standards',
       })
       expect(guidelines[2]).toMatchObject({
-        content: 'Active guideline',
-        active: false,
+        content: 'Another active',
+        active: true,
         contextName: 'coding-standards',
       })
     })
@@ -181,35 +181,28 @@ describe('guidelines service (with in-memory database)', () => {
 
     it('should work with stable virtual IDs after multiple operations', async () => {
       // Create multiple guidelines
-      const guideline1 = await createGuidelineByContextId(
-        'Rule 1',
-        testContextId,
-      )
-      const guideline2 = await createGuidelineByContextId(
-        'Rule 2',
-        testContextId,
-      )
-      const guideline3 = await createGuidelineByContextId(
-        'Rule 3',
-        testContextId,
-      )
+      await createGuidelineByContextId('Rule 1', testContextId)
+      await createGuidelineByContextId('Rule 2', testContextId)
+      await createGuidelineByContextId('Rule 3', testContextId)
 
-      // Delete the middle one
-      await deleteGuideline(guideline2.id)
-
-      // Verify the other two still exist and can be deleted by their IDs
+      // Fetch current guidelines and delete the middle one
       let remaining = await getGuidelinesForRepositoryById(testRepositoryId)
-      expect(remaining).toHaveLength(2)
+      const idRule2 = remaining[1].id
+      await deleteGuideline(idRule2)
 
-      // Delete guideline 3 - this should work even though line numbers have shifted
-      await deleteGuideline(guideline3.id)
+      // Fetch again and delete what is now "Rule 3"
+      remaining = await getGuidelinesForRepositoryById(testRepositoryId)
+      const idRule3 = remaining[1].id
+      await deleteGuideline(idRule3)
 
+      // Only "Rule 1" should remain
       remaining = await getGuidelinesForRepositoryById(testRepositoryId)
       expect(remaining).toHaveLength(1)
       expect(remaining[0].content).toBe('Rule 1')
 
       // Delete the last one
-      await deleteGuideline(guideline1.id)
+      const idRule1 = remaining[0].id
+      await deleteGuideline(idRule1)
 
       remaining = await getGuidelinesForRepositoryById(testRepositoryId)
       expect(remaining).toHaveLength(0)

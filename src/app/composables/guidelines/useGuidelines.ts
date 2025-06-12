@@ -67,8 +67,9 @@ export function useGuidelines() {
           repositoryId: repositoryId.value,
         }),
       })
-      // Add the complete created guideline at the beginning of the array
-      guidelines.value = [created, ...guidelines.value]
+      guidelines.value = [...guidelines.value, created].sort(
+        (a, b) => a.id - b.id,
+      )
       showCreateDialog.value = false
       newGuidelineContent.value = ''
       return created
@@ -209,6 +210,12 @@ export function useGuidelines() {
     }
   }
 
+  const refetchGuidelines = async () => {
+    if (repositoryId.value && selectedContext.value) {
+      await fetchGuidelines(repositoryId.value, selectedContext.value)
+    }
+  }
+
   // Watchers
   // Watch for selection changes to update context-specific selections
   watch(selectedGuidelines, (newSelection) => {
@@ -261,6 +268,7 @@ export function useGuidelines() {
     updateState,
     updateGuideline,
     deleteGuideline,
+    refetchGuidelines,
     bulkUpdateState,
     bulkDelete,
     selectedGuidelines,

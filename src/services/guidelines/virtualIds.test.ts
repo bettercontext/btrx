@@ -11,71 +11,52 @@ describe('virtualIds', () => {
   describe('generateVirtualId', () => {
     it('should generate a consistent ID for the same inputs', () => {
       const contextId = 1
-      const content = 'Test guideline'
 
-      const id1 = generateVirtualId(contextId, content)
-      const id2 = generateVirtualId(contextId, content)
+      const id1 = generateVirtualId(contextId, 0)
+      const id2 = generateVirtualId(contextId, 0)
 
       expect(id1).toBe(id2)
       expect(typeof id1).toBe('number')
       expect(id1).toBeGreaterThan(0)
     })
 
-    it('should generate different IDs for different content', () => {
+    it('should generate different IDs for different positions', () => {
       const contextId = 1
 
-      const id1 = generateVirtualId(contextId, 'First guideline')
-      const id2 = generateVirtualId(contextId, 'Second guideline')
+      const id1 = generateVirtualId(contextId, 0)
+      const id2 = generateVirtualId(contextId, 1)
 
       expect(id1).not.toBe(id2)
     })
 
     it('should generate different IDs for different context IDs', () => {
-      const content = 'Same content'
-
-      const id1 = generateVirtualId(1, content)
-      const id2 = generateVirtualId(2, content)
+      const id1 = generateVirtualId(1, 0)
+      const id2 = generateVirtualId(2, 0)
 
       expect(id1).not.toBe(id2)
     })
 
-    it('should normalize content when generating IDs', () => {
+    it('should generate different IDs for different positions even with same content', () => {
       const contextId = 1
 
-      const id1 = generateVirtualId(contextId, 'Test rule')
-      const id2 = generateVirtualId(contextId, '// Test rule')
-      const id3 = generateVirtualId(contextId, '  Test rule  ')
+      const id1 = generateVirtualId(contextId, 0)
+      const id2 = generateVirtualId(contextId, 1)
+      const id3 = generateVirtualId(contextId, 2)
 
-      // All should generate the same ID because they normalize to the same content
-      expect(id1).toBe(id2)
-      expect(id1).toBe(id3)
+      expect(id1).not.toBe(id2)
+      expect(id1).not.toBe(id3)
+      expect(id2).not.toBe(id3)
     })
 
-    it('should handle empty content', () => {
-      const id = generateVirtualId(1, '')
+    it('should handle empty position', () => {
+      const id = generateVirtualId(1, 0)
 
       expect(typeof id).toBe('number')
       expect(id).toBeGreaterThanOrEqual(0)
     })
 
-    it('should handle special characters in content', () => {
-      const specialContent = 'Content with éàç!@#$%^&*(){}[]|\\:";\'<>?,./~`'
-      const id = generateVirtualId(1, specialContent)
-
-      expect(typeof id).toBe('number')
-      expect(id).toBeGreaterThan(0)
-    })
-
-    it('should handle large context IDs and line numbers', () => {
-      const id = generateVirtualId(999999, 'Content')
-
-      expect(typeof id).toBe('number')
-      expect(id).toBeGreaterThan(0)
-    })
-
-    it('should handle unicode content', () => {
-      const unicodeContent = '测试内容 🚀 الاختبار 🎯'
-      const id = generateVirtualId(1, unicodeContent)
+    it('should handle large context IDs and positions', () => {
+      const id = generateVirtualId(999999, 12345)
 
       expect(typeof id).toBe('number')
       expect(id).toBeGreaterThan(0)
@@ -128,7 +109,7 @@ describe('virtualIds', () => {
       expect(result1[0].id).toBe(result2[0].id)
     })
 
-    it('should handle guidelines with identical content but different lines', () => {
+    it('should handle guidelines with identical content but different positions', () => {
       const contextId = 1
       const guidelines: ParsedGuideline[] = [
         { content: 'Same content', active: true, line: 0 },
@@ -138,10 +119,10 @@ describe('virtualIds', () => {
       const result = parseGuidelinesToVirtual(contextId, guidelines)
 
       expect(result).toHaveLength(2)
-      expect(result[0].id).toBe(result[1].id) // Same content should have same ID
+      expect(result[0].id).not.toBe(result[1].id) // Same content, different positions = different IDs
     })
 
-    it('should handle guidelines with same content and line for different contexts', () => {
+    it('should handle guidelines with same position for different contexts', () => {
       const guidelines: ParsedGuideline[] = [
         { content: 'Same content', active: true, line: 0 },
       ]
@@ -163,7 +144,7 @@ describe('virtualIds', () => {
     it('should find existing guideline by virtual ID', () => {
       const contextId = 1
       const expectedGuideline = mockGuidelines[1]
-      const virtualId = generateVirtualId(contextId, expectedGuideline.content)
+      const virtualId = generateVirtualId(contextId, 1)
 
       const result = findGuidelineByVirtualId(
         mockGuidelines,
@@ -202,7 +183,7 @@ describe('virtualIds', () => {
       }
       const guidelines = [specialGuideline]
 
-      const virtualId = generateVirtualId(contextId, specialGuideline.content)
+      const virtualId = generateVirtualId(contextId, 0)
 
       const result = findGuidelineByVirtualId(guidelines, contextId, virtualId)
 
@@ -218,7 +199,7 @@ describe('virtualIds', () => {
       }
       const guidelines = [unicodeGuideline]
 
-      const virtualId = generateVirtualId(contextId, unicodeGuideline.content)
+      const virtualId = generateVirtualId(contextId, 0)
 
       const result = findGuidelineByVirtualId(guidelines, contextId, virtualId)
 
@@ -226,8 +207,7 @@ describe('virtualIds', () => {
     })
 
     it('should not find guideline when context ID differs', () => {
-      const guideline = mockGuidelines[0]
-      const virtualId = generateVirtualId(1, guideline.content)
+      const virtualId = generateVirtualId(1, 0)
 
       // Search with different context ID
       const result = findGuidelineByVirtualId(mockGuidelines, 2, virtualId)
@@ -269,8 +249,8 @@ describe('virtualIds', () => {
       }
 
       // Generate ID multiple times
-      const id1 = generateVirtualId(contextId, guideline.content)
-      const id2 = generateVirtualId(contextId, guideline.content)
+      const id1 = generateVirtualId(contextId, 0)
+      const id2 = generateVirtualId(contextId, 0)
 
       // Parse the same guideline multiple times
       const parsed1 = parseGuidelinesToVirtual(contextId, [guideline])

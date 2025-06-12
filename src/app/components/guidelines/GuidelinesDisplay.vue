@@ -1,22 +1,22 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 
-import {
-  type Guideline,
-  guidelinesState,
-} from '@/app/composables/guidelines/useGuidelines'
+import { guidelinesState } from '@/app/composables/guidelines/useGuidelines'
+import { guidelinesDiffState } from '@/app/composables/guidelines/useGuidelinesDiff'
+import type { Guideline } from '@/services/guidelines'
 
 import GuidelineCreateDialog from './GuidelineCreateDialog.vue'
 import GuidelineDeleteDialog from './GuidelineDeleteDialog.vue'
 import GuidelineEditDialog from './GuidelineEditDialog.vue'
 import GuidelinesActions from './GuidelinesActions.vue'
 import GuidelinesTable from './GuidelinesTable.vue'
+import GuidelinesTableWithDiff from './GuidelinesTableWithDiff.vue'
 
 interface Props {
   contexts: { id: number; name: string; prompt: string }[]
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 
 const {
   showCreateDialog,
@@ -32,6 +32,7 @@ const {
   isLoading,
   error,
   updatingId,
+  selectedContext,
   createGuideline,
   updateState,
   updateGuideline,
@@ -40,7 +41,20 @@ const {
   bulkDelete,
 } = guidelinesState
 
+const { contextsWithPending, fetchContextsWithPending } = guidelinesDiffState
+
 const hasSelection = computed(() => selectedGuidelines.value.length > 0)
+
+// Auto diff mode based on pending contexts
+const shouldShowDiff = computed(() => {
+  const selectedContextData = props.contexts.find(
+    (ctx) => ctx.name === selectedContext.value,
+  )
+  if (!selectedContextData) return false
+  return contextsWithPending.value.some(
+    (ctx) => ctx.id === selectedContextData.id,
+  )
+})
 
 const handleMenuOpen = (guideline: Guideline, _event: Event) => {
   selectedGuideline.value = guideline
@@ -67,6 +81,16 @@ const handleBulkDelete = async () => {
 const handleClose = () => {
   selectedGuidelines.value = []
 }
+
+// Load pending contexts on mount
+onMounted(async () => {
+  await fetchContextsWithPending()
+})
+
+// Refresh pending contexts when changing context
+watch(selectedContext, async () => {
+  await fetchContextsWithPending()
+})
 </script>
 
 <template>
@@ -84,7 +108,36 @@ const handleClose = () => {
       <p class="error-message">{{ error }}</p>
     </div>
     <div v-else-if="repositoryId" class="guidelines-container">
+      <!-- Diff mode enabled -->
+      <GuidelinesTableWithDiff
+        v-if="shouldShowDiff"
+        v-model:selected-guidelines="selectedGuidelines"
+        :guidelines="guidelines"
+        :is-loading="isLoading"
+        :updating-id="updatingId"
+        :contexts="contexts"
+        @state-change="updateState"
+        @menu-open="handleMenuOpen"
+        @edit="
+          () => {
+            if (selectedGuideline) {
+              editedContent = selectedGuideline.content
+              showEditDialog = true
+            }
+          }
+        "
+        @delete="
+          () => {
+            if (selectedGuideline) {
+              showDeleteDialog = true
+            }
+          }
+        "
+      />
+
+      <!-- Normal mode -->
       <GuidelinesTable
+        v-else
         v-model:selected-guidelines="selectedGuidelines"
         :guidelines="guidelines"
         :is-loading="isLoading"

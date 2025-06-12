@@ -16,7 +16,7 @@ const { contextCwd, gitOriginUrl, error, isLoading, isLoadingGit } =
     <h2>Repository information</h2>
     <div v-if="contextCwd" class="card-content">
       <div class="info-row">
-        <span class="label">Context directory:</span>
+        <span class="label">Directory:</span>
         <code class="value">{{ contextCwd }}</code>
       </div>
 

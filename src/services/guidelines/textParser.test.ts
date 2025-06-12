@@ -17,7 +17,7 @@ describe('textParser', () => {
     })
 
     it('should parse active guidelines', () => {
-      const content = 'Active guideline 1\nActive guideline 2'
+      const content = 'Active guideline 1\n-_-_-\nActive guideline 2'
       const result = parseGuidelinesText(content)
 
       expect(result).toEqual([
@@ -27,7 +27,8 @@ describe('textParser', () => {
     })
 
     it('should parse inactive guidelines', () => {
-      const content = '// Inactive guideline 1\n// Inactive guideline 2'
+      const content =
+        '[DISABLED] Inactive guideline 1\n-_-_-\n[DISABLED] Inactive guideline 2'
       const result = parseGuidelinesText(content)
 
       expect(result).toEqual([
@@ -37,7 +38,8 @@ describe('textParser', () => {
     })
 
     it('should parse mixed active and inactive guidelines', () => {
-      const content = 'Active guideline\n// Inactive guideline\nAnother active'
+      const content =
+        'Active guideline\n-_-_-\n[DISABLED] Inactive guideline\n-_-_-\nAnother active'
       const result = parseGuidelinesText(content)
 
       expect(result).toEqual([
@@ -47,13 +49,13 @@ describe('textParser', () => {
       ])
     })
 
-    it('should skip empty lines', () => {
-      const content = 'Guideline 1\n\n\nGuideline 2\n\n'
+    it('should skip empty sections', () => {
+      const content = 'Guideline 1\n-_-_-\n\n-_-_-\nGuideline 2'
       const result = parseGuidelinesText(content)
 
       expect(result).toEqual([
         { line: 1, content: 'Guideline 1', active: true },
-        { line: 4, content: 'Guideline 2', active: true },
+        { line: 3, content: 'Guideline 2', active: true },
       ])
     })
   })
@@ -70,7 +72,7 @@ describe('textParser', () => {
       ]
       const result = serializeGuidelinesText(guidelines)
 
-      expect(result).toBe('Active 1\nActive 2')
+      expect(result).toBe('Active 1\n-_-_-\nActive 2')
     })
 
     it('should serialize inactive guidelines', () => {
@@ -80,7 +82,7 @@ describe('textParser', () => {
       ]
       const result = serializeGuidelinesText(guidelines)
 
-      expect(result).toBe('// Inactive 1\n// Inactive 2')
+      expect(result).toBe('[DISABLED] Inactive 1\n-_-_-\n[DISABLED] Inactive 2')
     })
 
     it('should serialize mixed guidelines', () => {
@@ -91,13 +93,16 @@ describe('textParser', () => {
       ]
       const result = serializeGuidelinesText(guidelines)
 
-      expect(result).toBe('Active\n// Inactive\nAnother active')
+      expect(result).toBe(
+        'Active\n-_-_-\n[DISABLED] Inactive\n-_-_-\nAnother active',
+      )
     })
   })
 
   describe('roundtrip parsing', () => {
     it('should maintain content through parse/serialize cycle', () => {
-      const original = 'Active guideline\n// Inactive guideline\nAnother active'
+      const original =
+        'Active guideline\n-_-_-\n[DISABLED] Inactive guideline\n-_-_-\nAnother active'
       const parsed = parseGuidelinesText(original)
       const serialized = serializeGuidelinesText(parsed)
 
@@ -113,28 +118,28 @@ describe('textParser', () => {
 
     it('should add active guideline to existing content', () => {
       const result = addGuidelineToText('Existing', 'New guideline')
-      expect(result).toBe('Existing\nNew guideline')
+      expect(result).toBe('Existing\n-_-_-\nNew guideline')
     })
 
     it('should add inactive guideline to existing content', () => {
       const result = addGuidelineToText('Existing', 'New guideline', false)
-      expect(result).toBe('Existing\n// New guideline')
+      expect(result).toBe('Existing\n-_-_-\n[DISABLED] New guideline')
     })
   })
 
   describe('updateGuidelineInText', () => {
     it('should update existing guideline', () => {
-      const content = 'Guideline 1\nGuideline 2'
+      const content = 'Guideline 1\n-_-_-\nGuideline 2'
       const result = updateGuidelineInText(
         content,
         'Guideline 1',
         'Updated guideline',
       )
-      expect(result).toBe('Updated guideline\nGuideline 2')
+      expect(result).toBe('Updated guideline\n-_-_-\nGuideline 2')
     })
 
     it('should throw error if guideline not found', () => {
-      const content = 'Guideline 1\nGuideline 2'
+      const content = 'Guideline 1\n-_-_-\nGuideline 2'
       expect(() =>
         updateGuidelineInText(content, 'Non-existent', 'Updated'),
       ).toThrow('Guideline not found')
@@ -143,23 +148,25 @@ describe('textParser', () => {
 
   describe('toggleGuidelineStateInText', () => {
     it('should activate inactive guideline', () => {
-      const content = '// Inactive guideline\nActive guideline'
+      const content = '[DISABLED] Inactive guideline\n-_-_-\nActive guideline'
       const result = toggleGuidelineStateInText(
         content,
         'Inactive guideline',
         true,
       )
-      expect(result).toBe('Inactive guideline\nActive guideline')
+      expect(result).toBe('Inactive guideline\n-_-_-\nActive guideline')
     })
 
     it('should deactivate active guideline', () => {
-      const content = 'Active guideline\n// Inactive guideline'
+      const content = 'Active guideline\n-_-_-\n[DISABLED] Inactive guideline'
       const result = toggleGuidelineStateInText(
         content,
         'Active guideline',
         false,
       )
-      expect(result).toBe('// Active guideline\n// Inactive guideline')
+      expect(result).toBe(
+        '[DISABLED] Active guideline\n-_-_-\n[DISABLED] Inactive guideline',
+      )
     })
 
     it('should throw error if guideline not found', () => {
@@ -172,15 +179,16 @@ describe('textParser', () => {
 
   describe('removeGuidelineFromText', () => {
     it('should remove existing guideline', () => {
-      const content = 'Guideline 1\nGuideline 2\nGuideline 3'
+      const content = 'Guideline 1\n-_-_-\nGuideline 2\n-_-_-\nGuideline 3'
       const result = removeGuidelineFromText(content, 'Guideline 2')
-      expect(result).toBe('Guideline 1\nGuideline 3')
+      expect(result).toBe('Guideline 1\n-_-_-\nGuideline 3')
     })
 
     it('should remove inactive guideline', () => {
-      const content = 'Active\n// Inactive\nAnother active'
+      const content =
+        'Active\n-_-_-\n[DISABLED] Inactive\n-_-_-\nAnother active'
       const result = removeGuidelineFromText(content, 'Inactive')
-      expect(result).toBe('Active\nAnother active')
+      expect(result).toBe('Active\n-_-_-\nAnother active')
     })
 
     it('should throw error if guideline not found', () => {

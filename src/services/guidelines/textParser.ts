@@ -3,7 +3,7 @@ import type { ParsedGuideline } from './types'
 export function normalizeGuidelineContent(content: string): string {
   return content
     .trim()
-    .replace(/^\/\/\s*/u, '')
+    .replace(/^\[DISABLED\]\s*/u, '')
     .trim()
 }
 
@@ -12,18 +12,20 @@ export function parseGuidelinesText(content: string): ParsedGuideline[] {
     return []
   }
 
-  const lines = content.split('\n')
+  const sections = content.split('\n-_-_-\n')
   const guidelines: ParsedGuideline[] = []
 
-  lines.forEach((line, index) => {
-    const trimmedLine = line.trim()
+  sections.forEach((section, index) => {
+    const trimmedSection = section.trim()
 
-    if (trimmedLine === '') {
+    if (trimmedSection === '') {
       return
     }
 
-    const isInactive = trimmedLine.startsWith('// ')
-    const guidelineContent = isInactive ? trimmedLine.substring(3) : trimmedLine
+    const isInactive = trimmedSection.startsWith('[DISABLED] ')
+    const guidelineContent = isInactive
+      ? trimmedSection.substring(11) // Remove '[DISABLED] '
+      : trimmedSection
 
     if (guidelineContent.trim() !== '') {
       guidelines.push({
@@ -44,10 +46,10 @@ export function serializeGuidelinesText(guidelines: ParsedGuideline[]): string {
 
   return guidelines
     .map((guideline) => {
-      const prefix = guideline.active ? '' : '// '
+      const prefix = guideline.active ? '' : '[DISABLED] '
       return `${prefix}${guideline.content}`
     })
-    .join('\n')
+    .join('\n-_-_-\n')
 }
 
 export function addGuidelineToText(
